@@ -100,7 +100,8 @@ with `PUT /files/contents`, no asking the builder agent to write the real app):
    `POST /agent-api/sessions/{s}/git`) using the user's own GitHub connection.
 3. **Stop and tell the user** to add the new repo to the fine-grained PAT behind that connection
    (Repository access → the repo, **Contents: Read and write**). Until then the repo is empty.
-4. **Trigger the first push** — the engine only pushes on its next commit: ask the builder chat to
+4. **Trigger the first push** — first check `GET /agent-api/sessions/{s}/git`: if the token could already push, the link
+   pushed the tree itself (`synced`, ✅ 2026-09-26) and this step is done. Otherwise the engine pushes on its next commit: ask the builder chat to
    "commit the current working tree as it is". Confirm `GET /agent-api/sessions/{s}/git` →
    `sync.state: "synced"` and `gh api repos/<owner>/<repo>/commits` shows the commit.
 5. **Develop locally.** `gh repo clone`, `cd app && bun install && bun run build`. Run the dev

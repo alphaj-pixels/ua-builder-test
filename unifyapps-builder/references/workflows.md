@@ -989,3 +989,25 @@ data source: **200 in 24.9 s**, Claude Sonnet 4.6 (Vertex) returned structured J
   and the run (and its child) show `CANCELLED`. A slow LLM step cannot be smoke-tested that way —
   deploy it and execute through a data source (synchronous execute waited 25 s fine).
 - Templating (`{{ n_in.outputs.x }}`) works inside `systemPrompt` and inside message `text`.
+
+## Storage steps inside a workflow ✅ 2026-09-26
+
+Verified building the Standup Board automations (`alpha_scratch_*`, UAT):
+
+- **SINGLE fetch → the record is `outputs` itself**: `{{ n_x.outputs.id }}`, `{{ n_x.outputs.properties.team }}`.
+  `objects[0]` (what the output schema suggests) resolves to nothing and the key is silently dropped. MULTIPLE →
+  `outputs.objects[]`.
+- **Filter spelling in workflows is flat**: `{"operator":"AND","filters":[{"property":"properties_team","filter":{"operator":"EQUAL","value":"..."}}]}`.
+  `IN` takes an array value; `CONTAINS` and `operator:"OR"` work.
+- **A filter value that resolves to nothing fails the run** (`5004 … No Value found in filter with field`). Resolve the
+  parent first, branch with `IF_ELSE`, and prefer ids you can compute (e.g. `<TEAM>-<date>`) over ids read from a node
+  that may be empty.
+- **Upsert** = `storage_by_unifyapps_update_record_by_id` with `useRawPayload: true, upsert: true, recordId, rawPayload`.
+  `upsert: false` replaces the whole record.
+- **For-each over records**: build the list in Groovy (`[id: r.id, payload: fullRecord]`), then `loop_for_each`
+  (`listSource`, `repeatMode: "SINGLE"`) with an update inside using `recordId: "{{ n_loop.outputs.item.id }}"`,
+  `rawPayload: "{{ n_loop.outputs.item.payload }}"`.
+- **Groovy has no `Date.format`** (groovy-dateutil is not on the classpath) → use `java.time`
+  (`java.time.LocalDate.now(java.time.ZoneId.of(tz)).toString()`).
+- **Tags must be in the save body too.** `tags` sent only on `POST /api/workflow-definition` are wiped by a
+  `saveAndReturnViolations` body that omits them — include `tags` in every save, then read them back via aggregation.

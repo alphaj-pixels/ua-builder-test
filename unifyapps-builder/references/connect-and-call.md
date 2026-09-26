@@ -87,6 +87,12 @@ Claude must **never ask for the password in chat** and must never put it in a co
 or an env var it writes itself. If the session is non-interactive, `getpass` cannot run, so use
 Option A.
 
+**Forced password reset** ✅ UAT 2026-09-26: an account flagged for a reset does **not** get a 401. Login returns
+200 with `response.resetPassword: true` (and `redirectUrl: "/update-password"`), and then every `/api/*` call returns
+**204 with an empty body**. Check `resetPassword` after logging in; the user finishes the reset in a browser and updates
+their password wherever the script reads it. In a cloud session, changed environment variables reach only a new
+session.
+
 ## 3. Confirm who you are
 
 ```

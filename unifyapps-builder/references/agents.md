@@ -268,3 +268,29 @@ Honest list of what this study did **not** establish:
 | `e_topic_ai_agent` | `e_6aae34db5f977a32333e7090` | Customer Lookup |
 | `e_action_ai_agent` | `e_6aae34db6a7a1a6dffbce1b5` | LookupCustomer (task-scoped) |
 | `e_action_ai_agent` | `e_6aae36065f977a32333e77bb` | LookupCustomerGlobal |
+
+---
+
+## 11. Talking to an agent over REST ✅ 2026-09-26
+
+Verified on the Standup Summariser (`e_6ab80ca405e65b5f9282fd45`, UAT): the agent selected its Task, called its
+workflow tool and returned a correct summary.
+
+```http
+POST /api/workflow/execute/node/sse?name=callables_call_automation_streaming
+Accept: text/event-stream
+
+{ "id": "callables_call_automation_streaming",
+  "context": { "appName": "callables", "resourceName": "callables_call_automation_streaming" },
+  "inputs": { "automationId": "67dcfe388445037d9b0662c0", "version": "-1", "runtimeConnections": {}, "synchronous": true,
+              "parameters": { "copilotType": "AI_AGENT_TEST", "message": "<user message>", "messageContentType": "MARKDOWN",
+                              "aiAgentId": "<agent id>", "timezoneId": "<IANA zone>" } },
+  "options": {} }
+```
+
+Read the stream line by line: `data:` lines carry `response.result.delta.data` messages (`messageType: "Bot"`;
+`additional.internalMessageType: "THOUGHT"` marks task-selection notes). The answer is the last `Typography` block
+(`data.type: "MARKDOWN"`); the stream ends with `{"completed": true}`. Tool names appear in the THOUGHT messages.
+
+- A tool scoped to one Task (`topicId: <task id>`) is invisible to other Tasks — make a shared read tool `GLOBAL`.
+- Publishing bumps the agent's entity version several times; confirm with `GET /api/entity/deployed/ai_agent/{id}`.

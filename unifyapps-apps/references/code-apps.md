@@ -312,3 +312,22 @@ platform tab — 200 with `response.rows` straight from Oracle EBS.
 **empty**, and a later `GET /agent-api/sessions/{s}/git` returns `{"linked": false}` — the link
 did not persist because the first push failed. The user must add the repo to the token
 (Contents: read & write) before the link/push can succeed.
+
+## Findings from building "Standup Board" (`app-7e15a9fb98dd`) ✅ 2026-09-26
+
+- **An errored first turn is recoverable.** `enginePayload.status: "error"` with `recoverable: true` (one LLM call,
+  0 tokens) → `POST /agent-api/sessions/{s}/retry` `{}` → `{"ok": true}`; the build finished ~80 s later.
+- **Linking Git pushes straight away** when the token can push (PAT on all repositories): `sync.state` was `synced`
+  seconds after `POST …/git`, and GitHub had the builder's commit. Check `GET …/git` and the GitHub commits before
+  asking the builder to "commit the working tree" — it may be unnecessary.
+- **Privacy from the brief is not reliable** (API-SPEC §18 D4): "Require sign-in" produced login routes but no
+  `security.type`. Read it back.
+- **Cloud (Claude Code on the web) sessions:** the session's git/GitHub proxy only allows repos attached to the
+  session, even with a personal token — attach the new repo (`add_repo`, push access) before cloning. Don't push with
+  `git push -u <url-with-token>`: `-u` writes that URL into `.git/config`.
+- **Data layer by REST** (instead of the builder's `provision_data_sources`): create `e_global_<appId>`, then the five
+  storage data sources with exactly the `storedInputs` in the template's `bindings.ts`, `dP` = one
+  `inputs.<field>` per `{{field}}`; one `callables_call_automation` data source per workflow with
+  `parameters.<p>: "{{p}}"` and `dP` `inputs.parameters.<p>`. Write the ids into `bindings.ts` (`ENTITY` + five ids)
+  and an `automations.ts`; `bun run build` type-checks them against the SDK. Searching data sources needs a
+  `properties.interfacePageId` filter.

@@ -7,8 +7,8 @@
 
 | | |
 |---|---|
-| **Spec version** | 0.3.2 |
-| **Last updated** | 2026-09-21 |
+| **Spec version** | 0.4.4 |
+| **Last updated** | 2026-09-26 |
 | **Tenants covered** | `UAT` = `https://orbit.uat.unifyapps.com` · `APS1` = `https://tool.prod-aps1.unifyapps.com` |
 | **Endpoints catalogued** | ~175 unique paths, including confirmed-dead ones (§15) |
 | **Companion skills** | `unifyapps-builder` (workflows + agents), `unifyapps-context-graph` (ECG), `unifyapps-apps` (applications, objects, connections) |
@@ -266,7 +266,16 @@ Session check and current-user details. Returns **401** when the session is inva
 cheapest liveness probe.
 
 **Response** — 200, user object. `customer.id` is the tenant **`spaceId`** used in ECG
-vertex ids (APS1 = `90`). Full field list not yet recorded.
+vertex ids (APS1 = `90`). Top-level keys ✅ UAT 2026-09-26: `assumeContextAllowed, customer, environment,
+isImpersonatedSession, modules, notificationMqttTopics, user`; `user` carries `id` (the value that appears as
+`oUId` in aggregation rows), `name`, `email`, `username`, `firstLogin`, `ssoLogin`, `roles`, `userGroups`.
+(`user.ownerUserId` is `-1` — it is not the user's own id.)
+
+⚠️ **Forced password reset** ✅ UAT 2026-09-26. When an account is flagged for a password reset, the login call
+returns **200** (not 401) with `response.resetPassword: true` and `response.redirectUrl: "/update-password"`, and
+sets the session cookie — but every `/api/*` call then returns **204 with an empty body** (`user-context`,
+`getLoggedInUser`, aggregation alike). Check `resetPassword` in the login response; the user must finish the reset
+in a browser. After the reset, the old password gets **401**.
 
 ### OAuth surface (UI routes, not REST)
 📦 UAT · 2026-09-19
@@ -1505,6 +1514,23 @@ workflow run reliably in 25–40 s.
 | `delete_records` | `object_type`, `numberOfRecordsToDelete: "SINGLE"`, `triggerInputCondition: {operator, filters}` |
 | `fetch_records` | `object_type`, `triggerInputCondition` (👁) |
 
+**Inside a workflow** ✅ UAT 2026-09-26 (Standup Board build, versions `fetch_records` 16421, `create_record` /
+`update_record_by_id` 16420):
+- **A `SINGLE` fetch returns the record itself at the top of `outputs`** — `{{ n.outputs.id }}`,
+  `{{ n.outputs.properties.x }}` — **not** `objects[0]` as the output schema advertises. `objects[0]` templates
+  resolve to nothing and are silently dropped. A `MULTIPLE` fetch returns `outputs.objects[]`.
+- Filters use the **flat** spelling `properties_<field>`: `EQUAL`, `IN` (value is an array), `CONTAINS`, and
+  `operator: "OR"` all verified. (App data sources use `properties.<field>` instead — see §23.)
+- ⚠️ A filter leaf whose `value` template resolves to nothing is not "no match" — the run **fails** with
+  `5004 Validation failed … No Value found in filter with field: properties.<x>`. Guard with an `IF_ELSE` first.
+- `update_record_by_id` with `useRawPayload: true, upsert: true, rawPayload: {…}` creates or replaces by
+  `recordId`. `upsert: false` replaces the whole properties map (send the full record).
+- `create_record` with `useRawPayload: true, rawPayload: {…}` works; an integer Groovy output templated into an
+  integer field stays an integer.
+- `loop_for_each` (v214): `listSource: "{{ n_code.outputs.result.list }}"`, `repeatMode: "SINGLE"`; body group
+  `{loopId}@g1@l`; edges `loop@loop@first`, `next@last@loop` (`name: "loopback"`), `next@loop@after`. A whole-object
+  template `rawPayload: "{{ n_loop.outputs.item.payload }}"` passes the map through.
+
 ### ECG pipeline — `ecg_by_unifyapps`
 📦 APS1 · 2026-09-20
 
@@ -1554,6 +1580,10 @@ published source config**, so they do not bypass the wizard.
 | `E11000 duplicate key ... CUSTOMER_ENTITY_<n>.<object>` | record create | primary-key value already used (record id = PK) |
 | `Lookup type not supported: EntityType` (5004) | lookup | use `ENTITY_TYPE` |
 | `e_component with id e_global_<app> not found` (5002) | embedded-entities | app has no global page yet — it is created with the first page |
+| login 200 with `resetPassword: true`, then every `/api/*` → 204 empty | login | account flagged for password reset → user resets in a browser (§3) |
+| `No Value found in filter with field: properties.x` (5004) | workflow storage step | a filter value template resolved to nothing → guard with IF_ELSE before the fetch |
+| `No signature of method: java.util.Date.format()` | Groovy node | Groovy date extensions are not on the sandbox classpath → use `java.time` |
+| `Search on e_data_source requires a properties.interfacePageId filter` (5011) | `POST /api/entity/e_data_source` | add `properties.interfacePageId` (e.g. `e_global_<appId>`) to the filter |
 | HTML instead of JSON | any | session expired → re-login |
 
 ---
@@ -1589,6 +1619,13 @@ resolve by testing, then update both the entry and the affected skill.
 - Possibly both work on both. **To resolve:** try each form on the other tenant.
 
 ---
+
+### D4 — Does the code builder set app privacy from the brief?
+- **0.3.2 (app-282f2c90f0fd):** a brief asking for login produced `security.type: PRIVATE`.
+- **UAT 2026-09-26 (app-7e15a9fb98dd):** a brief saying "Require sign-in (private app)" produced login pages in
+  the code but **no `security.type`** on the entity (only `cspData`).
+- **Current best knowledge:** not reliable — read `security.type` back after the build and ask the builder agent
+  explicitly if it is missing.
 
 ## 19. Open questions / backlog
 
@@ -1656,6 +1693,7 @@ Useful for eyeballing what the API built.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.4.4 | 2026-09-26 | Forced-password-reset login behaviour (§3, §17); in-workflow storage contract — SINGLE fetch returns the record at top level, flat filter spelling, empty-filter-value failure, upsert, `loop_for_each` (§16); Groovy has no `Date.format` (§17); builder `/retry`, push-on-link, local-branch pickup, all five storage data sources + delete verified (§23); agent chat body verified (§25); D4 privacy-from-brief. Built Standup Board on UAT. Header version corrected (was 0.3.2). |
 | 0.4.3 | 2026-09-21 | Agent chat over REST (send via SSE, read conversation, trace timeline + span I/O); generate-chart silent-end defect; HubSpot search/owners/pipelines output quirks. |
 | 0.4.2 | 2026-09-21 | Agent skills (`e_skill_ai_agent`, `accessibleTo` link, attach over REST, draft-publish side effect); agent clone via console; copying connector tools between agents. |
 | 0.4.1 | 2026-09-21 | §25 Connectors SDK: create/auth/action/request endpoints, `{{ rawPayload.x }}` templates, create-vs-update request paths, publish → node resources. Verified by building `SC Native - Fireflies` on UAT. Agents: console *⋯ → Clone* duplicates an agent **with its skills and knowledge** (used for SC Copilot v2 `e_6ab1375cf843281fda63184d`). |
@@ -1801,6 +1839,21 @@ Branches view shows check status, *Behind | Ahead*, pull requests. Pull-back fro
 
 ---
 
+**Findings from Standup Board** (`app-7e15a9fb98dd`) ✅ UAT 2026-09-26:
+- `POST /agent-api/sessions/{s}/retry` with `{}` → `{"ok": true}` recovers a builder session whose first turn
+  errored (`enginePayload.status: "error"`, `recoverable: true`, 1 LLM call, 0 tokens); it finished ~80 s later.
+- `GET /agent-api/sessions/{s}/branches` ✅, `GET /agent-api/sessions/{s}/changes` ✅, `GET /agent-api/sessions/{s}/git` ✅.
+- **Linking Git pushes the existing working tree immediately** when the connection's token can push: `sync.state`
+  went `syncing` → `synced` within seconds and GitHub had the builder's commit, so no "commit the working tree"
+  instruction was needed. The GitHub SHA (`25cf495`) differed from the SHA `/changes` listed before the link
+  (`6d63595`) — same message and tree; treat SHAs as re-written by the push.
+- A branch pushed from a local clone appears in `GET /agent-api/apps/{appId}/branches` (`base: "main"`) ✅.
+- Five storage data sources + one `callables_call_automation` data source per workflow, created with
+  `POST /api/entity` against a self-created `e_global_<appId>`, all executed ✅. `FETCH_ONE` responds with the
+  record itself (not `objects`). `storage_by_unifyapps_delete_record_by_id` (v16345) via data source →
+  `{"success": {"t1": true, "t2": false}}` and the record is gone (404). Optional workflow parameters must still
+  be sent (as `""`); an empty string for a `number` input reaches Groovy as unbound.
+
 ## 24. Objects Manager
 
 Module id `ENTITY_TYPE`. An object is an `EntityType` (STANDARD); its records are entities of
@@ -1881,6 +1934,22 @@ read: `…?name=call_automation&fetchConversation=66ab98083d73300e63962287` (par
 traces: `GetTraceTimeline` (automation `680cdbcaa3741471fc7c22e9`, `{traceId}`) and `TraceTimelineDetails`
 (automation `6943f1be474ba4398bf4201c`, `{id, type}`). Full bodies: `unifyapps-builder/references/agents.md`.
 ⚠️ `loadSkill(generate-chart)` silently ends the turn on UAT (no further LLM span).
+
+**Verified request body** ✅ UAT 2026-09-26 (Standup Summariser `e_6ab80ca405e65b5f9282fd45`):
+```json
+POST /api/workflow/execute/node/sse?name=callables_call_automation_streaming   (Accept: text/event-stream)
+{ "id": "callables_call_automation_streaming",
+  "context": { "appName": "callables", "resourceName": "callables_call_automation_streaming" },
+  "inputs": { "automationId": "67dcfe388445037d9b0662c0", "version": "-1", "runtimeConnections": {}, "synchronous": true,
+              "parameters": { "copilotType": "AI_AGENT_TEST", "message": "<user message>", "messageContentType": "MARKDOWN",
+                              "aiAgentId": "<agent id>", "timezoneId": "Europe/London" } },
+  "options": {} }
+```
+The stream is `event:message` / `data:{…}` lines; `response.result.delta.data` carries `Fan` (user) and `Bot`
+messages (`additional.internalMessageType: "THOUGHT"` for task-selection notes), the final answer as a
+`Typography` block (`data.type: "MARKDOWN"`), then `responseGenerationStatus: "completed"` and `{"completed": true}`.
+Read it line by line without buffering the whole stream. Publishing an agent bumps its entity version several
+times (6 → 12, deployed `entityVersion` 7); verify with `GET /api/entity/deployed/ai_agent/{id}` ✅.
 
 ### HubSpot search notes
 ✅ UAT · 2026-09-21 — `hubspot_search_records_batch` operators: EQ NEQ LT LTE GT GTE CONTAINS NOT_CONTAINS
