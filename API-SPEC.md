@@ -410,7 +410,7 @@ Builder helper, called while editing.
 | POST | `/api/workflow-definition/executedWorkflowDefinition` | 👁 UAT | body `{"deployedWorkflowId":"s_{id}/{ver}/{hash}","test":true}` → the definition a run used |
 | POST | `/api/workflow-definition/update/` | 📦 | partial update; unused by the UI |
 | POST | `/api/workflow-definition/clone/` | 📦 | |
-| POST | `/api/workflow-definition/delete/` | 📦 | referenced in our notes but **never exercised** |
+| POST | `/api/workflow-definition/delete/{id}` | ✅ | body `{}` → `true`; a GET afterwards returns 500 "not found". `DELETE /api/workflow-definition/{id}` and a body-only `…/delete/` are 405 |
 | GET | `/api/workflow-definition/deployed-workflow/` | 📦 | |
 | GET | `/api/workflow-definition/node-dependency/` | 📦 | |
 | GET | `/api/workflow-definition/global-settings` | 📦 | |
