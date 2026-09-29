@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Spec version** | 0.4.5 |
+| **Spec version** | 0.4.6 |
 | **Last updated** | 2026-09-29 |
 | **Tenants covered** | `UAT` = `https://orbit.uat.unifyapps.com` · `APS1` = `https://tool.prod-aps1.unifyapps.com` |
 | **Endpoints catalogued** | ~175 unique paths, including confirmed-dead ones (§15) |
@@ -1696,6 +1696,7 @@ Useful for eyeballing what the API built.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.4.6 | 2026-09-29 | Workflow delete `POST /api/workflow-definition/delete/{id}` and `e_data_source` delete (hierarchical `DELETED`) verified; config apps: page inputs from URL query string, page-to-PDF export (in-workflow output `file[0].link`), storage data source JS transformer, `cP` needed for visibility conditions, unclosed-comment customCSS trap — details in `unifyapps-apps/references/config-apps.md`. |
 | 0.4.5 | 2026-09-29 | §3: find a tenant's local IdP id from the `/login` page (`type: PASSWORD`); `/auth/identity-providers` is public but untyped. |
 | 0.4.4 | 2026-09-26 | Forced-password-reset login behaviour (§3, §17); in-workflow storage contract — SINGLE fetch returns the record at top level, flat filter spelling, empty-filter-value failure, upsert, `loop_for_each` (§16); Groovy has no `Date.format` (§17); builder `/retry`, push-on-link, local-branch pickup, all five storage data sources + delete verified (§23); agent chat body verified (§25); D4 privacy-from-brief. Built Standup Board on UAT. Header version corrected (was 0.3.2). |
 | 0.4.3 | 2026-09-21 | Agent chat over REST (send via SSE, read conversation, trace timeline + span I/O); generate-chart silent-end defect; HubSpot search/owners/pipelines output quirks. |

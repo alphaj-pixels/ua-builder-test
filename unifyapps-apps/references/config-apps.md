@@ -141,3 +141,20 @@ Other storage actions: `_create_record`, `_update_record_by_id`, `_delete_record
   page load when bound blocks depended on it (observed in the UI); use
   `runBehaviour:"manual"` for mutation-style sources.
 - Config-app "Versions" are publish snapshots only — there is no Git for config apps.
+- **Page inputs from the URL** (✅ Sales 2026-09-29): `.../preview/<slug>?account_id=C_239&account_name=PhonePe`
+  fills `pageInputs['account_id']` / `['account_name']`. This is how an export can render a page for one record.
+- **Export a page to PDF**: data source `utility_by_unifyapps_export_unifyapps_pages_to_pdf` with
+  `pdfPages[{url, fileName, externalPage:false}]`, `page:{format, layout, scale, timeout}`; button event
+  `controlDataSource {dataSourceId, method:"trigger"}`, `callbacks.successEvents` `downloadFile`. Over REST
+  `/execute/node` returns no file; inside a workflow the node returns `outputs.file[0].link` (✅, PDF downloaded
+  and checked). Use `layout:"landscape"` (portrait A4 is under 900px wide) and `timeout` ≈ 20000 so data loads.
+- **Storage data source + JS transformer**: `options.transformerConfig {enabled, includeOriginalOutput, type:"javascript",
+  context:{appName:"code_by_unifyapps", resourceName:"code_by_unifyapps_javascript"}, inputs:{code}}`; `data` is the
+  fetch output (`data.objects` for MULTIPLE); blocks read the returned object as `{{ ds['data']['x'] }}` (✅).
+- **Show/hide on a condition** needs `cP: [{p:"visibility.conditions"}]` as well as the `dP` path, or it is ignored.
+- **Repeatable items**: `{{ <repeatableId>['context']['item']['x'] }}` — when generating these in Python never use
+  an f-string for the closing `}}` (it collapses to `}` and the block renders the raw expression).
+- **Unclosed `/*` in any block's customCSS** silences block CSS that comes after it on that page; put new styles
+  in `customCode.header` (`<style>…</style>`) on such pages.
+- **Delete an `e_data_source`**: hierarchical endpoint with `requestType:"DELETED"` (✅); `DELETE /api/entity/...` is 405.
+
