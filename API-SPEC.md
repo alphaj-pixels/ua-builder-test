@@ -7,8 +7,8 @@
 
 | | |
 |---|---|
-| **Spec version** | 0.4.4 |
-| **Last updated** | 2026-09-26 |
+| **Spec version** | 0.4.5 |
+| **Last updated** | 2026-09-29 |
 | **Tenants covered** | `UAT` = `https://orbit.uat.unifyapps.com` · `APS1` = `https://tool.prod-aps1.unifyapps.com` |
 | **Endpoints catalogued** | ~175 unique paths, including confirmed-dead ones (§15) |
 | **Companion skills** | `unifyapps-builder` (workflows + agents), `unifyapps-context-graph` (ECG), `unifyapps-apps` (applications, objects, connections) |
@@ -255,6 +255,9 @@ Runs through the same node-executor as `/api/workflow/execute/node`, but under `
 - SSO accounts cannot use this. Google SAML rejects non-provisioned accounts with
   `app_not_configured_for_user`. Use a local account with a password set.
 - `identityProviderId` is tenant-specific — read it from the login request on a new tenant.
+- Finding it without DevTools â uat-us-east-1 · 2026-09-29: the tenant's `/login` HTML embeds its identity providers;
+  the local one has `"type":"PASSWORD"`. `GET /auth/identity-providers` (no auth) lists all providers including
+  per-app ones, without a type — not enough to choose from.
 - A `/mfa-verification` route exists in the UI; an MFA-enforced account needs a step not
   yet documented.
 - Verified from outside a browser (Python `urllib`): no CORS or referer requirement.
@@ -1693,6 +1696,7 @@ Useful for eyeballing what the API built.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.4.5 | 2026-09-29 | §3: find a tenant's local IdP id from the `/login` page (`type: PASSWORD`); `/auth/identity-providers` is public but untyped. |
 | 0.4.4 | 2026-09-26 | Forced-password-reset login behaviour (§3, §17); in-workflow storage contract — SINGLE fetch returns the record at top level, flat filter spelling, empty-filter-value failure, upsert, `loop_for_each` (§16); Groovy has no `Date.format` (§17); builder `/retry`, push-on-link, local-branch pickup, all five storage data sources + delete verified (§23); agent chat body verified (§25); D4 privacy-from-brief. Built Standup Board on UAT. Header version corrected (was 0.3.2). |
 | 0.4.3 | 2026-09-21 | Agent chat over REST (send via SSE, read conversation, trace timeline + span I/O); generate-chart silent-end defect; HubSpot search/owners/pipelines output quirks. |
 | 0.4.2 | 2026-09-21 | Agent skills (`e_skill_ai_agent`, `accessibleTo` link, attach over REST, draft-publish side effect); agent clone via console; copying connector tools between agents. |

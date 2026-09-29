@@ -79,6 +79,10 @@ on the tenant and it isn't a secret, but it does differ between tenants.
 - Any other tenant: open the login page, open DevTools → Network, sign in with username and
   password, and read `inputs.identityProviderId` from the `emailAndPassLoginRequest` request
   payload. Or ask a tenant admin.
+- Or read it without signing in ✅ 2026-09-29: the tenant's `/login` page embeds its identity providers as JSON.
+  Pick the one with `"type":"PASSWORD"` (name usually "Login", the username/password form); `OPEN_ID` / SAML entries
+  are SSO buttons. `GET /auth/identity-providers` is public too, but it lists every app's login provider (44 on one
+  tenant, 40 named "Login") without a type, so don't guess from it — and never try a password against several ids.
 
 A 401 at login means one of: wrong username or password, the wrong `UA_IDP_ID`, the account
 still has **First Login** set (sign in once in a browser to clear it), or MFA is enforced.
