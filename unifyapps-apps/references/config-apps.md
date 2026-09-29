@@ -157,4 +157,13 @@ Other storage actions: `_create_record`, `_update_record_by_id`, `_delete_record
 - **Unclosed `/*` in any block's customCSS** silences block CSS that comes after it on that page; put new styles
   in `customCode.header` (`<style>…</style>`) on such pages.
 - **Delete an `e_data_source`**: hierarchical endpoint with `requestType:"DELETED"` (✅); `DELETE /api/entity/...` is 405.
+- **Downloading a file a workflow produced** (✅ Sales 2026-09-29): a FILE output reaches the app **without** its
+  `link` (only `source`, `name`, …), and Groovy cannot read `link` either. Add `utility_by_unifyapps_generate_public_url`
+  (`{file: "{{ n_pdf.outputs.file[0] }}", expiryTime: 1}`) and return its `url` (a presigned S3 URL, downloads as an
+  attachment without cookies). In the app: button → `controlDataSource trigger` on a callable data source; its
+  `callbacks.successEvents` → `navigate {path: "{{ ds['data']['url'] }}", target:"_blank"}`.
+- **Data-driven colours**: `additional.htmlAttributes [{key:"data-x", value:"{{ … }}"}]` (dP `additional.htmlAttributes[i].value`)
+  plus attribute-selector rules in `customCode.header`, e.g. `[data-x='R']{background:…}`; works inside Repeatables.
+- **Repeatable templates** need `width:100%` or grid rows shrink to their content.
+
 
