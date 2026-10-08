@@ -1,9 +1,10 @@
 """Recreate the FDSE utilisation stack (and optionally the Slack -> task tracker flow) in a TARGET UnifyApps environment from bundle.json.
 
-Target login comes from UA2_BASE_URL, UA2_USERNAME, UA2_IDP_ID, UA2_PASSWORD (never printed). Dry run by default: it signs in,
+Target: --target https://<host> (or UA2_BASE_URL). Login: UA2_USERNAME / UA2_IDP_ID / UA2_PASSWORD when set, otherwise the
+environment's existing UA_ login (never printed). Dry run by default: it signs in,
 checks what already exists and prints the plan. Nothing is written without --apply.
 
-  python3 migrate.py                                   # dry run, group fdse
+  python3 migrate.py --target https://sales.unifyapps.com   # dry run, group fdse
   python3 migrate.py --groups fdse,slack_sync          # include the Slack -> tracker flow
   python3 migrate.py --apply --app <interface id> [--conn google_workspace=<connection id>] [--tm-slug <task mgmt app slug>]
                      [--scope-root someone@company.com] [--nav-module <module page id>] [--reuse-existing]
@@ -22,7 +23,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 B = json.load(open(os.path.join(HERE, "bundle.json")))
 
 # ---------------------------------------------------------------- target client (own cookie jar; credentials never printed)
-BASE = os.environ.get("UA2_BASE_URL", "").rstrip("/")
+def _target():
+    for i, x in enumerate(sys.argv):
+        if x == "--target" and i + 1 < len(sys.argv): return sys.argv[i + 1]
+        if x.startswith("--target="): return x.split("=", 1)[1]
+    return os.environ.get("UA2_BASE_URL", "")
+BASE = _target().rstrip("/")
+# login for the target: UA2_* when set, otherwise the same login this environment already uses (UA_*)
+CRED = {k: os.environ.get("UA2_" + k) or os.environ.get("UA_" + k) for k in ("USERNAME", "IDP_ID", "PASSWORD")}
 JAR = os.path.join(HERE, ".ua2_cookies")
 jar = http.cookiejar.LWPCookieJar(JAR)
 if os.path.exists(JAR): jar.load(ignore_discard=True, ignore_expires=True)
@@ -40,14 +48,15 @@ def call(method, path, body=None, timeout=90):
     return out
 
 def signin():
-    missing = [k for k in ("UA2_BASE_URL", "UA2_USERNAME", "UA2_IDP_ID", "UA2_PASSWORD") if not os.environ.get(k)]
-    if missing: raise SystemExit("Missing target settings: " + ", ".join(missing))
+    if not BASE: raise SystemExit("No target: pass --target https://<host> or set UA2_BASE_URL")
+    missing = [k for k, v in CRED.items() if not v]
+    if missing: raise SystemExit("Missing login settings (UA2_ or UA_): " + ", ".join(missing))
     try: return call("GET", "/api/user-context?includeRoles=true")
     except RuntimeError: pass
     call("POST", "/auth/workflow/execute/node?name=emailAndPassLoginRequest", {"id": "emailAndPassLoginRequest",
          "context": {"appName": "auth_by_unifyapps", "resourceName": "auth_by_unifyapps_login"},
-         "inputs": {"returnTo": "/", "failureReturnTo": BASE + "/login", "formData": {"username": os.environ["UA2_USERNAME"],
-                    "password": os.environ["UA2_PASSWORD"], "rememberMe": True}, "identityProviderId": os.environ["UA2_IDP_ID"]},
+         "inputs": {"returnTo": "/", "failureReturnTo": BASE + "/login", "formData": {"username": CRED["USERNAME"],
+                    "password": CRED["PASSWORD"], "rememberMe": True}, "identityProviderId": CRED["IDP_ID"]},
          "options": {"cacheConfig": {}}})
     jar.save(ignore_discard=True, ignore_expires=True); os.chmod(JAR, 0o600)
     return call("GET", "/api/user-context?includeRoles=true")
@@ -86,7 +95,7 @@ def order_workflows(keys):
 
 # ---------------------------------------------------------------- main
 ap = argparse.ArgumentParser()
-ap.add_argument("--apply", action="store_true"); ap.add_argument("--groups", default="fdse")
+ap.add_argument("--apply", action="store_true"); ap.add_argument("--target"); ap.add_argument("--groups", default="fdse")
 ap.add_argument("--app"); ap.add_argument("--conn", action="append", default=[]); ap.add_argument("--tm-slug")
 ap.add_argument("--scope-root"); ap.add_argument("--nav-module"); ap.add_argument("--reuse-existing", action="store_true")
 a = ap.parse_args()

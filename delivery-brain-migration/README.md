@@ -3,10 +3,10 @@
 `bundle.json` is a read-only export from sales.uat-us-east-1 (8 Oct 2026): object schemas, 9 workflows, the FDSE utilisation page,
 its data source and its navigation item. `migrate.py` recreates them in a target environment. It needs only `bundle.json`.
 
-1. Add the target login to the cloud environment as variables: `UA2_BASE_URL`, `UA2_USERNAME`, `UA2_IDP_ID`, `UA2_PASSWORD`
-   (a local, non-SSO account). Allow the target host in the environment's network settings if it is a different domain.
-2. Dry run, which only reads: `python3 migrate.py` (add `--groups fdse,slack_sync` for the Slack -> task tracker flow).
-3. Apply: `python3 migrate.py --apply --app <target app id> --conn google_workspace=<connection id>`.
+1. Allow the target host (e.g. sales.unifyapps.com) under Network access in the cloud environment settings. The script signs in
+   with the environment's existing UA_ login; set UA2_USERNAME / UA2_IDP_ID / UA2_PASSWORD only if the target needs a different one.
+2. Dry run, which only reads: `python3 migrate.py --target https://sales.unifyapps.com` (add `--groups fdse,slack_sync` for the Slack flow).
+3. Apply: add `--apply --app <target app id> --conn google_workspace=<connection id>`.
 
 Groups: `fdse` = the page, its data workflow, scoring and people sync (daily), the new-user trigger, the leaver archive.
 `slack_sync` = DB | write CXO slack records and DB | Slack tasks | Sync to task tracker (the Slack agent itself is not included).
