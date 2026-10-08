@@ -46,3 +46,8 @@ Task Management links use the app slug task-management-application-clone (`--tm-
   - DB | write CXO slack records `6aba455da3760e42b2b7b888`: v7 -> v8, only the "Sync Slack tasks to the task tracker" step added before Respond.
 - **Left as is:** Delivery Brain - Archive Deleted Google Workspace Users (already identical in prod).
 - **First runs:** the people sync archived 88 leavers and 13 duplicates into fdse_archive (db_fdse 538 -> 437 rows); scoring ran for 437 people.
+- **Later the same day:**
+  - Slack tasks synced to the tracker (866 tasks, 44 accounts) and scoring re-run.
+  - The page added to the app's page tree (`paths`) and `navigation`, which the migration had missed. Until then it did not appear in Preview.
+  - Access: Sumeet, Alpha and Naman Singh only (both page gates and the nav card), and all three get the full-team view (the data source's `admin` parameter).
+  - The app itself is **not published**: its draft also holds other people's unpublished edits on six pages.
