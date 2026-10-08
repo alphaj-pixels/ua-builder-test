@@ -42,6 +42,9 @@ def call(method, path, body=None, timeout=90):
     try:
         with opener.open(req, timeout=timeout) as r: raw, status, ct = r.read(), r.status, r.headers.get("content-type", "")
     except urllib.error.HTTPError as e: raw, status, ct = e.read(), e.code, e.headers.get("content-type", "")
+    except (urllib.error.URLError, OSError) as e:
+        raise SystemExit(f"Cannot reach {urllib.parse.urlparse(BASE).hostname}: {getattr(e, 'reason', e)}. "
+                         "If it is only reachable on the company network or VPN, run this from a machine that is on it.")
     if raw and "json" not in ct: raise RuntimeError(f"HTTP {status} non-JSON ({ct}) - not signed in?")
     out = json.loads(raw) if raw else None
     if status >= 400: raise RuntimeError(f"HTTP {status} {json.dumps(out)[:300]}")
