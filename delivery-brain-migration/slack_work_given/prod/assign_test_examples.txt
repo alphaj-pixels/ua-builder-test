@@ -1,0 +1,36 @@
+### T1 | Delivery Brain (internal) | delivery-brain | 2026-10-04
+[2026-10-04 09:00 UTC] Jay Shah: Delivery Brain Update , 4th Oct
+Next step: everything marked :white_check_mark: is in UAT. Review, then move to prod after thorough checks.
+Account 360 (C360)
+1. p0 Account 360 page, one view of each customer account. @Alpha :white_check_mark:.
+2. p1 CXO view of accounts needing attention, with region and product lead filters, cards or table view. @Alpha :white_check_mark:.
+6. p0 Risks, commitments and escalations from calls, email and Slack, optimisation. - optimisation @harshit in progress ETA : 5 Oct .
+7. p0 Leadership mailboxes covered, two levels deep under Shivam sir. @harshit blocked on email ingestion for expired users.
+8. p0 Atlas data moved into Account 360. @Anusha in progress ETA : 5 Oct.
+Task Management
+2. p0 Task management inside Delivery Brain, working in UAT, moving to live. @Anusha in progress ETA : 5 Oct.
+Access & Data Governance
+3. p0 UAT to prod movement review. @prabhanshu.tomer in progress ETA : 6 Oct.
+Blockers
+3. Two columns in Atlas to tag account and use case against an engineering task. @Anusha depends on @Sujal Aggarwal @Saumya Pandey.
+@Shamyak Can we please work on BRDs for Production Posting and Plant Maintenance to get a sign-off from the ATL Operations team before the rollout?
+@awanish @ajinkya.jaiswal Pls make sure proper roles are assigned to everyone. Abhishek (CCO) was not assigned any role, as a result data was not populating for him.
+### T2 | Sagility | sagility-internal | 2026-10-04
+[2026-10-04 10:00 UTC] Samridhi Aggarwal: Sagility Weekly Update
+UC01 : SAGE - Build - (UAT to be initiated Soon) (POC - Syam) :red_circle:
+1. Voice Setup - Raised on 27th Sep- Pending on Sagility Team - ETA 9 oct.
+3. MS Teams integration - UA to resolve issue "SDK not loading in MS team" . ETA 6 oct.
+UC02 : GIA - Build (Build completion - 23rd Oct) - (POC : Pranathi) :large_yellow_circle:
+UC04 : AI OPS - Discovery - (POC : Abhishek Kumar)
+1. Sagility to respond with requested data and next steps for this usecase..
+UC05 : HR Analytics - Build - (POC : Avinish)
+UC07 : SAM - Discovery - (POC - Lavanya)
+UC09 : ARI - Discovery - (POC - Vijaykumar)
+3. UA team to check the feasibility of each MVP feature and discuss it in the next call with stakeholders..
+@Adi @Abhishek Singh @Sandeep @Jay Shah @Santosh Singh
+### T3 | Sagility | sagility-dev | 2026-09-25
+[2026-09-25 12:42 UTC] Sambhav Jain1: @Zetendra Lingamgunta sir, we need to initiate QA for SAGE. Could you please align someone to take this up? We need to complete the QA over the weekend.
+CC: @Abhishek Singh Sir, @Samridhi Aggarwal, @Archit Kumar (TDM)
+    -> [2026-09-25 12:48 UTC] Zetendra Lingamgunta: Sure, Let me align
+    -> [2026-09-25 12:50 UTC] Zetendra Lingamgunta: @Raja Vamsi Please pick this
+@Tulasi Bandaru Please help him

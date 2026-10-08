@@ -1,0 +1,14 @@
+{
+ "DB | Use Case Classifier": {
+  "agent": "e_6abb97e126a1877b272bd7d7",
+  "task": "e_6abb97e126a1877b272bd7d8"
+ },
+ "DB | Daily Account Summariser": {
+  "agent": "e_6abb97e2c59ee249cf674833",
+  "task": "e_6abb97e2c59ee249cf674834"
+ },
+ "DB | Weekly Account Snapshot": {
+  "agent": "e_6abe1f1031b25c78709e6b8e",
+  "task": "e_6abe1f1131b25c78709e6b8f"
+ }
+}
