@@ -101,6 +101,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--apply", action="store_true"); ap.add_argument("--target"); ap.add_argument("--groups", default="fdse")
 ap.add_argument("--app"); ap.add_argument("--conn", action="append", default=[]); ap.add_argument("--tm-slug")
 ap.add_argument("--scope-root"); ap.add_argument("--nav-module"); ap.add_argument("--reuse-existing", action="store_true")
+ap.add_argument("--skip-objects", action="store_true", help="leave object schemas alone (step 1)")
 ap.add_argument("--skip", help="workflow keys to leave out, comma separated (as printed in [brackets]); their callers are left out too")
 a = ap.parse_args()
 groups = [g.strip() for g in a.groups.split(",") if g.strip()]
@@ -116,7 +117,7 @@ conn_map = dict(x.split("=", 1) for x in a.conn)
 problems = []
 
 # 1. objects
-objects = sorted({o for g in groups for o in B["groups"][g]["objects"]})
+objects = [] if a.skip_objects else sorted({o for g in groups for o in B["groups"][g]["objects"]})
 print("\n1. Objects")
 for oid in objects:
     src = B["objects"][oid]["schema"]["schema"]["properties"]; cur = get_type(oid)
