@@ -3,15 +3,15 @@
 `bundle.json` is a read-only export from sales.uat-us-east-1 (8 Oct 2026): object schemas, 9 workflows, the FDSE utilisation page,
 its data source and its navigation item. `migrate.py` recreates them in a target environment. It needs only `bundle.json`.
 
-1. Allow the target host (e.g. sales.unifyapps.com) under Network access in the cloud environment settings. The script signs in
+1. Allow the target host (e.g. sales.prod.unifyapps.com) under Network access in the cloud environment settings. The script signs in
    with the environment's existing UA_ login; set UA2_USERNAME / UA2_IDP_ID / UA2_PASSWORD only if the target needs a different one.
-2. Dry run, which only reads: `python3 migrate.py --target https://sales.unifyapps.com` (add `--groups fdse,slack_sync` for the Slack flow).
+2. Dry run, which only reads: `python3 migrate.py --target https://sales.prod.unifyapps.com` (add `--groups fdse,slack_sync` for the Slack flow).
 3. Apply: add `--apply --app <target app id> --conn google_workspace=<connection id>`.
 
 In your browser (for Google / SSO accounts; no password or identity provider id needed): `migrate_console.js` is the same
 migration with bundle.json inlined. It runs on the tab's own signed-in session.
 
-1. Sign in to the target (e.g. https://sales.unifyapps.com) and open DevTools (F12) → Sources → Snippets → New snippet.
+1. Sign in to the target (e.g. https://sales.prod.unifyapps.com) and open DevTools (F12) → Sources → Snippets → New snippet.
 2. Paste all of `migrate_console.js`, run it (Ctrl/Cmd+Enter), then in the Console: `await fdseMigrate()` for the dry run.
 3. Apply: `await fdseMigrate({ apply: true, app: '<interface id>', conn: { google_workspace: '<connection id>' } })`.
    Other options: `groups: 'fdse,slack_sync'`, `tmSlug`, `scopeRoot`, `navModule`, `reuseExisting: true`.
@@ -24,7 +24,7 @@ Copy this folder, then set the target's login in your shell and run the same com
 
     export UA2_USERNAME=you@unifyapps.com UA2_IDP_ID=<target tenant's identity provider id>
     read -s UA2_PASSWORD && export UA2_PASSWORD
-    python3 migrate.py --target https://sales.unifyapps.com
+    python3 migrate.py --target https://sales.prod.unifyapps.com
 
 The identity provider id is per tenant, so the one the UAT login uses will not work on another environment.
 

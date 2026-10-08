@@ -4,7 +4,7 @@ Target: --target https://<host> (or UA2_BASE_URL). Login: UA2_USERNAME / UA2_IDP
 environment's existing UA_ login (never printed). Dry run by default: it signs in,
 checks what already exists and prints the plan. Nothing is written without --apply.
 
-  python3 migrate.py --target https://sales.unifyapps.com   # dry run, group fdse
+  python3 migrate.py --target https://sales.prod.unifyapps.com   # dry run, group fdse
   python3 migrate.py --groups fdse,slack_sync          # include the Slack -> tracker flow
   python3 migrate.py --apply --app <interface id> [--conn google_workspace=<connection id>] [--tm-slug <task mgmt app slug>]
                      [--scope-root someone@company.com] [--nav-module <module page id>] [--reuse-existing]
