@@ -7,7 +7,7 @@ checks what already exists and prints the plan. Nothing is written without --app
   python3 migrate.py --target https://sales.prod.unifyapps.com   # dry run, group fdse
   python3 migrate.py --groups fdse,slack_sync          # include the Slack -> tracker flow
   python3 migrate.py --apply --app <interface id> [--conn google_workspace=<connection id>] [--tm-slug <task mgmt app slug>]
-                     [--scope-root someone@company.com] [--nav-module <module page id>] [--reuse-existing]
+                     [--scope-root someone@company.com] [--nav-module <module page id>] [--reuse-existing] [--skip fdse_sync]
 
 What --apply does, in order (idempotent: ids are kept in state_<host>.json, reruns update instead of duplicating):
   1. objects: creates missing objects with the source schema; adds missing fields to existing ones (never removes any);
@@ -101,6 +101,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--apply", action="store_true"); ap.add_argument("--target"); ap.add_argument("--groups", default="fdse")
 ap.add_argument("--app"); ap.add_argument("--conn", action="append", default=[]); ap.add_argument("--tm-slug")
 ap.add_argument("--scope-root"); ap.add_argument("--nav-module"); ap.add_argument("--reuse-existing", action="store_true")
+ap.add_argument("--skip", help="workflow keys to leave out, comma separated (as printed in [brackets]); their callers are left out too")
 a = ap.parse_args()
 groups = [g.strip() for g in a.groups.split(",") if g.strip()]
 for g in groups:
@@ -147,9 +148,24 @@ for oid in objects:
 
 # 2. workflows
 keys = order_workflows([k for g in groups for k in B["groups"][g]["workflows"]])
+skip = {s.strip() for s in (a.skip or "").split(",") if s.strip()}
+while True:   # skipping a workflow also skips the ones that call it
+    more = {k for k in keys if k not in skip and set(B["deps"][k]["calls"]) & skip}
+    if not more: break
+    skip |= more
+linked = {}   # same-name workflows already on the target that are left as they are
 print("\n2. Workflows (called workflows first)")
 for k in keys:
-    w = B["workflows"][k]; nodes = copy.deepcopy(w["nodes"]); notes = []
+    w = B["workflows"][k]
+    if k in skip: print(f"  [{k}] {w['name']}: skipped"); continue
+    existing = state["workflows"].get(k)
+    same_name = [] if existing else find_workflow(w["name"])
+    if same_name and not a.reuse_existing:
+        linked[k] = same_name[0]
+        print(f"  [{k}] {w['name']}: already exists as {same_name[0]}, left as it is (--reuse-existing replaces it with this version)")
+        continue
+    if same_name: existing = same_name[0]
+    nodes = copy.deepcopy(w["nodes"]); notes = []
     for n in nodes:
         ctx = n.get("context") or {}
         if ctx.get("appName") and ctx.get("resourceName"):
@@ -166,16 +182,12 @@ for k in keys:
         inp = n.get("inputs") or {}
         if ctx.get("resourceName") == "callables_call_automation" and inp.get("automationId"):
             ck = next((kk for kk, ww in B["workflows"].items() if ww["id"] == inp["automationId"]), None)
-            if ck and state["workflows"].get(ck): inp["automationId"] = state["workflows"][ck]
+            if ck and (state["workflows"].get(ck) or linked.get(ck)): inp["automationId"] = state["workflows"].get(ck) or linked[ck]
             elif ck: notes.append(f"call to {B['workflows'][ck]['name']} remapped once it exists")
             else: problems.append(f"{w['name']}: calls workflow {inp['automationId']} that is not in the bundle")
         if a.scope_root and k == "fdse_page" and isinstance(inp.get("code"), str):
             inp["code"] = inp["code"].replace("sumeet@unifyapps.com", a.scope_root)
-    existing = state["workflows"].get(k)
-    same_name = [] if existing else find_workflow(w["name"])
-    if same_name and a.reuse_existing: existing = same_name[0]
-    action = ("update " + existing) if existing else ("create (a workflow with this name already exists and is left alone; --reuse-existing updates it instead)" if same_name else "create")
-    print(f"  {w['name']}: {action}" + (f" | {'; '.join(notes)}" if notes else ""))
+    print(f"  [{k}] {w['name']}: {('update ' + existing) if existing else 'create'}" + (f" | {'; '.join(notes)}" if notes else ""))
     if a.apply:
         if not existing:
             existing = call("POST", "/api/workflow-definition", {"name": w["name"], "description": w.get("description") or "", "tags": ["DB", "migrated"],

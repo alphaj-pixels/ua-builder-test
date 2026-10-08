@@ -5,7 +5,7 @@
 //   await fdseMigrate()                                              // dry run, group fdse: reads only
 //   await fdseMigrate({ groups: 'fdse,slack_sync' })                 // include the Slack -> tracker flow
 //   await fdseMigrate({ apply: true, app: '<interface id>', conn: { google_workspace: '<connection id>' },
-//                       tmSlug, scopeRoot, navModule, reuseExisting })
+//                       tmSlug, scopeRoot, navModule, reuseExisting, skip: 'fdse_sync' })   // skip also drops callers
 //
 // Same steps and order as migrate.py. Ids it creates are kept in this browser's localStorage per host, so a rerun
 // updates instead of duplicating; fdseMigrate.state() shows them.
@@ -103,9 +103,25 @@
 
     // 2. workflows
     const keys = orderWorkflows(groups.flatMap(g => B.groups[g].workflows));
+    const skip = new Set((Array.isArray(o.skip) ? o.skip : String(o.skip || '').split(',')).map(s => s.trim()).filter(Boolean));
+    for (let more = true; more;) {   // skipping a workflow also skips the ones that call it
+      more = false;
+      for (const k of keys) if (!skip.has(k) && B.deps[k].calls.some(c => skip.has(c))) { skip.add(k); more = true; }
+    }
+    const linked = {};   // same-name workflows already on the target that are left as they are
     log('\n2. Workflows (called workflows first)');
     for (const k of keys) {
-      const w = B.workflows[k], nodes = structuredClone(w.nodes), notes = [];
+      const w = B.workflows[k];
+      if (skip.has(k)) { log(`  [${k}] ${w.name}: skipped`); continue; }
+      let existing = state.workflows[k];
+      const sameName = existing ? [] : await findWorkflow(w.name);
+      if (sameName.length && !o.reuseExisting) {
+        linked[k] = sameName[0];
+        log(`  [${k}] ${w.name}: already exists as ${sameName[0]}, left as it is (reuseExisting: true replaces it with this version)`);
+        continue;
+      }
+      if (sameName.length) existing = sameName[0];
+      const nodes = structuredClone(w.nodes), notes = [];
       for (const n of nodes) {
         const ctx = n.context || {};
         if (ctx.appName && ctx.resourceName) {
@@ -125,18 +141,13 @@
         const inp = n.inputs || {};
         if (ctx.resourceName === 'callables_call_automation' && inp.automationId) {
           const ck = Object.keys(B.workflows).find(kk => B.workflows[kk].id === inp.automationId);
-          if (ck && state.workflows[ck]) inp.automationId = state.workflows[ck];
+          if (ck && (state.workflows[ck] || linked[ck])) inp.automationId = state.workflows[ck] || linked[ck];
           else if (ck) notes.push(`call to ${B.workflows[ck].name} remapped once it exists`);
           else problems.push(`${w.name}: calls workflow ${inp.automationId} that is not in the bundle`);
         }
         if (o.scopeRoot && k === 'fdse_page' && typeof inp.code === 'string') inp.code = all(inp.code, 'sumeet@unifyapps.com', o.scopeRoot);
       }
-      let existing = state.workflows[k];
-      const sameName = existing ? [] : await findWorkflow(w.name);
-      if (sameName.length && o.reuseExisting) existing = sameName[0];
-      const action = existing ? 'update ' + existing
-        : sameName.length ? 'create (a workflow with this name already exists and is left alone; reuseExisting: true updates it instead)' : 'create';
-      log(`  ${w.name}: ${action}` + (notes.length ? ` | ${notes.join('; ')}` : ''));
+      log(`  [${k}] ${w.name}: ${existing ? 'update ' + existing : 'create'}` + (notes.length ? ` | ${notes.join('; ')}` : ''));
       if (apply) {
         if (!existing) existing = (await call('POST', '/api/workflow-definition', { name: w.name, description: w.description || '', tags: ['DB', 'migrated'],
           nodes: [{ id: 'n_seed', type: 'START', title: 'seed', trigger: { type: 'EVENT' }, index: 0, groupId: 'n_seed-1', fallbackMode: 'STOP', skip: false }], edges: [] })).id;
