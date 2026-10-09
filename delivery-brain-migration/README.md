@@ -50,4 +50,7 @@ Task Management links use the app slug task-management-application-clone (`--tm-
   - Slack tasks synced to the tracker (866 tasks, 44 accounts) and scoring re-run.
   - The page added to the app's page tree (`paths`) and `navigation`, which the migration had missed. Until then it did not appear in Preview.
   - Access: Sumeet, Alpha and Naman Singh only (both page gates and the nav card), and all three get the full-team view (the data source's `admin` parameter).
-  - The app itself is **not published**: its draft also holds other people's unpublished edits on six pages.
+  - The app was not published that day: its draft also held other people's unpublished edits on six pages.
+- **9 Oct 2026, 12:29 IST:** app published (version 131 -> 132) on request. That also published the pending edits on add-channels,
+  cxo-dashboard, portfolio-dashboard, voice-of-customer, project-related-assets and account-detail. App, nav and all 43 pages
+  (draft and live copies) as they were before: `prod_backups/prod_backup_before_publish_2026-10-09.json.gz`.
