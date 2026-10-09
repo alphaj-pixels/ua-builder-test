@@ -253,8 +253,8 @@ def build_cov(pg, eds, main, grid, chead):
     # drawers: every non-churned account, and every mapped channel, opened from the two numbers
     LINK = "color:var(--fu-link) !important; cursor:pointer; width:fit-content;"
     da = cov_drawer(pg, grid, CV, "cov_acc_drawer", E("'Accounts (' + ($V?.['accounts'] || '0') + ')'"), "acc_sub", "acc_rows",
-                    [("Account", "minmax(0,1.3fr)"), ("Status", "90px"), ("Slack channels", "minmax(0,1.6fr)"), ("Messages, 30 days", "90px"), ("Last message", "90px")],
-                    ["name", "status", "channels", "msgs", "last"], V_DACC,
+                    [("Account", "minmax(0,1.2fr)"), ("Status", "130px"), ("Slack channels", "minmax(0,2fr)")],
+                    ["name", "status", "channels"], V_DACC,
                     [("all", "All", "true"), ("with", "With channels", "r['tone'] !== 'R'"), ("without", "No channel", "r['tone'] === 'R'")])
     dc = cov_drawer(pg, grid, CV, "cov_ch_drawer", E("'Mapped Slack channels (' + ($V?.['channels'] || '0') + ')'"), "ch_sub", "ch_rows",
                     [("Channel", "minmax(0,1.3fr)"), ("Account", "minmax(0,1.2fr)"), ("Messages, 30 days", "90px"), ("Last message", "90px")],

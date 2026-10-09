@@ -111,14 +111,14 @@ def dayOf = { String iso -> try { iso ? fmt(Instant.parse(iso).atZone(ZONE).toLo
 def SL = [active: 'Active', not_started: 'Awaiting kickoff']   // account_db status 'not_started' = signed, delivery not kicked off yet
 def accRows = ((cov.acc_list instanceof List) ? cov.acc_list : []).withIndex().collect { a, k -> int nch = N(a.n_ch); int ms = N(a.msgs)
   [id: 'a' + k, name: S(a.name), status: SL[S(a.status)] ?: S(a.status), channels: nch ? S(a.channels) : 'No Slack channel added', n_ch: nch.toString(), msgs: ms.toString(),
-   last: dayOf(S(a.last)), tone: nch == 0 ? 'R' : (ms == 0 ? 'A' : 'G')] }
+   last: dayOf(S(a.last)), tone: nch == 0 ? 'R' : 'G'] }
 def chRows = ((cov.ch_list instanceof List) ? cov.ch_list : []).withIndex().collect { c, k -> int ms = N(c.msgs)
   [id: 'c' + k, channel: '#' + S(c.channel), account: S(c.account) ?: 'No account', msgs: ms.toString(), last: dayOf(S(c.last)), tone: ms == 0 ? 'A' : 'G'] }
 def covCard = [has: cov ? 'yes' : 'no', nc_n: NC.size().toString(), accounts: N(cov.accounts).toString(), nc_active_n: ncA.size().toString(), nc_ns_n: ncN.size().toString(),
   nc_active: ncA.collect { S(it.name) }.join(' · ') ?: 'None', nc_ns: ncN.collect { S(it.name) }.join(' · ') ?: 'None',
   q_n: QC.size().toString(), channels: N(cov.channels).toString(), quiet: QC.collect { '#' + S(it.channel) + (S(it.account) ? ' (' + S(it.account) + ')' : ' (no account)') }.join(' · ') ?: 'None',
   updated: covUpd ? 'Updated ' + fmt(covUpd) + '.' : '', acc_rows: accRows, ch_rows: chRows,
-  acc_sub: accRows.count { it.tone == 'R' } + ' with no Slack channel, ' + accRows.count { it.tone == 'A' } + ' with channels but no messages in the past 30 days, ' + accRows.count { it.tone == 'G' } + ' with messages. Churned accounts are left out.',
+  acc_sub: accRows.count { it.tone == 'R' } + ' with no Slack channel added, ' + accRows.count { it.tone == 'G' } + ' with at least one. Churned accounts are left out.',
   ch_sub: chRows.count { it.tone == 'A' } + ' with no messages in the past 30 days, ' + chRows.count { it.tone == 'G' } + ' with messages. Channels of churned accounts are left out.']
 def shortL = { List xs, int k -> xs.size() <= k ? (xs.join(' · ') ?: 'None') : (xs.take(k).join(' · ') + ' … and ' + (xs.size() - k) + ' more') }
 covCard.nc_active_s = shortL(ncA.collect { S(it.name) }, 12); covCard.nc_ns_s = shortL(ncN.collect { S(it.name) }, 8)
