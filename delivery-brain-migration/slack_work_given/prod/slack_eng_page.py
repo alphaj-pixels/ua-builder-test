@@ -63,16 +63,18 @@ def leaders = (kids[F] ?: []).findAll { d -> desc(d).any { scope.contains(it) } 
    zero_n: z.toString(), zero_s: pct(z, on), status: share >= 40 ? 'R' : (share >= 20 ? 'A' : 'G'), sk: share] }
   .sort { a, b -> (b.sk <=> a.sk) ?: (a.name <=> b.name) }.collect { it.findAll { k, v -> k != 'sk' } }
 def rd = N(sum.conversations_read); def pend = N(sum.conversations_pending); def tot = N(sum.assignments)
+def fromAsg = N(sum.from_slack_asg); def fromCxo = N(sum.from_slack_cxo); def fromTrk = N(sum.from_tracker)
 def win = rng(today.minusDays(29), today)
 def upd = updated ? Instant.ofEpochMilli(updated).atZone(ZONE) : null
-def leadTxt = n == 0 ? ('No FDSEs report into ' + fname + '.') : ((cnt['zero'] ?: 0) + ' of ' + fd(n) + ' in ' + fname + "'s team " + ((cnt['zero'] ?: 0) == 1 ? 'was' : 'were') + ' given no work in Slack in the past 30 days.')
-if (rd == 0) leadTxt = 'Still reading Slack conversations for work given to FDSEs. Check back in an hour.'
+def leadTxt = n == 0 ? ('No FDSEs report into ' + fname + '.') : ((cnt['zero'] ?: 0) + ' of ' + fd(n) + ' in ' + fname + "'s team " + ((cnt['zero'] ?: 0) == 1 ? 'was' : 'were') + ' given no work in the past 30 days.')
+if (rd == 0 && tot == 0) leadTxt = 'Still reading Slack conversations for work given to FDSEs. Check back in an hour.'
 else if (pend > 0) leadTxt = 'So far, ' + leadTxt.substring(0, 1).toLowerCase() + leadTxt.substring(1)
-def eng = [asof: 'Slack engagement, ' + win + '. ' + fd(n) + ' in ' + fname + "'s team" + (upd ? ' · updated ' + fmt(upd.toLocalDate()) + ' ' + String.format('%02d:%02d', upd.hour, upd.minute) : ''),
+def eng = [asof: 'Work given, past 30 days ' + win + '. ' + fd(n) + ' in ' + fname + "'s team" + (upd ? ' · updated ' + fmt(upd.toLocalDate()) + ' ' + String.format('%02d:%02d', upd.hour, upd.minute) : ''),
   label: 'Past 30 days · ' + fname + "'s team",
   lead: leadTxt,
   rest: n == 0 ? '' : ((cnt['engaged'] ?: 0) + ' were given work in 3 or 4 of the last 4 weeks, and ' + (cnt['low'] ?: 0) + ' in only 1 or 2 weeks.'),
-  coverage: 'Read from ' + rd + ' Slack conversations in mapped account channels: ' + tot + ' pieces of work given to FDSEs.' + (pend ? ' ' + pend + ' more conversations are still being read (newest first), so counts will rise.' : ''),
+  coverage: S(sum.source) == 'task_tracker' ? ('From the task tracker: ' + tot + ' tasks given to FDSEs across the company in the past 30 days, ' + fromAsg + ' found in Slack conversations by the Slack Task Assignment agent, ' + fromCxo + ' from Slack CXO records and ' + (fromTrk ? fromTrk + ' logged directly in the tracker.' : 'none logged directly in the tracker.') + ' ' + rd + ' Slack conversations read.' + (pend ? ' ' + pend + ' more are still being read, so counts will rise.' : ''))
+    : ('Read from ' + rd + ' Slack conversations in mapped account channels: ' + tot + ' pieces of work given to FDSEs.' + (pend ? ' ' + pend + ' more conversations are still being read (newest first), so counts will rise.' : '')),
   has_data: updated ? 'yes' : 'no', tabs: tabs, people: people, weeks: weeks, leaders: leaders, has_leaders: leaders ? 'yes' : 'no',
   no_leaders: 'Nobody reporting to ' + fname + ' leads FDSEs.']
 return [eng: eng, tier: [crumbs: crumbs.withIndex().collect { m, i -> [id: 'c' + i, email: m, name: nameOf[m] ?: m, last: i == crumbs.size() - 1 ? 'yes' : 'no'] }, focus: [email: F, name: fname]]]
@@ -91,7 +93,7 @@ def wf():
 if __name__ == "__main__":
     ua.ensure_session()
     nodes, edges = wf()
-    wid, ver, viol = W.save("DB | FDSE Slack Engagement Page | Data", "Data for the FDSE page's Slack engagement view: past-30-day @-tags per FDSE in the viewer's scope, bands, by-leader counts.",
+    wid, ver, viol = W.save("DB | FDSE Slack Engagement Page | Data", "Data for the FDSE page's Past 30 days view: work given per FDSE (from the task tracker, via the score) in the viewer's scope, bands, by-leader counts.",
                             nodes, edges, wid=SE.reg().get("slack_eng_page"))
     SE.reg_set("slack_eng_page", wid); print("saved", wid, ver, viol)
     if not viol: print("deployed", W.deploy(wid, "FDSE Slack engagement page data"))

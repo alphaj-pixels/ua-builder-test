@@ -216,3 +216,76 @@ if __name__ == "__main__" and "extract2" in sys.argv[1:]:
     wid, ver, viol = W.save("DB | Slack assignments | Extract", "Reads Slack conversations not read yet (newest first, in batches), asks the Slack Task Assignment agent who was given work, records each assignment and adds new ones to the task tracker.",
                             nodes, edges, wid=SE.reg().get("slack_asg_extract"))
     print("extract:", wid, ver, viol, W.deploy(wid, "Slack assignments extract + progress") if not viol else "")
+
+SCORE3 = r"""
+import groovy.json.JsonOutput
+import java.time.*
+def S = { v -> v == null ? '' : v.toString().trim() }
+def L = { String n -> binding.hasVariable(n) && binding.getVariable(n) instanceof List ? binding.getVariable(n) : [] }
+def ZONE = ZoneId.of('Asia/Kolkata'); def now = System.currentTimeMillis(); def nowI = Instant.ofEpochMilli(now); def since = nowI.minusSeconds(30L * 86400L)
+def MON = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+def DONE = ['done', 'completed', 'closed', 'archive'] as Set
+def SRC = { String cf -> cf == 'Slack assignment' ? 'asg' : (cf == 'Slack' ? 'cxo' : 'tracker') }
+// when the work was given: the Slack message time for Slack tasks, otherwise when the task was created
+def givenAt = { Map r, Map p ->
+  def m = (S(p.slack_link) =~ /\/p(\d{10})\d{6}/); if (m.find()) return Instant.ofEpochSecond(m.group(1) as long)
+  def m2 = (S(p.source_record_id) =~ /:(\d{10})\./); if (S(p.created_from) == 'Slack assignment' && m2.find()) return Instant.ofEpochSecond(m2.group(1) as long)
+  def c = r.createdTime ?: p.createdTime; try { return c ? Instant.ofEpochMilli(c as long) : null } catch (e) { return null } }
+def items = [:].withDefault { [] }; def bySrc = [:].withDefault { 0 }
+L('tasks').each { r ->
+  def p = r.properties ?: [:]
+  def t = givenAt(r, p); if (t == null || t.isBefore(since) || t.isAfter(nowI.plusSeconds(86400L))) return
+  def owners = ((S(p.ownerMail).split(/[,;\s]+/) as List) + ((p.Owners_List instanceof List) ? p.Owners_List : [])).collect { S(it).toLowerCase() }.findAll { it.contains('@') }.unique()
+  def lt = (S(p.slack_link) =~ /archives\/([A-Z0-9]+)\/p(\d{16})/); def link = lt.find() ? lt.group(1) + ':' + lt.group(2) : ''
+  owners.each { o -> items[o] << [task: S(p.task) ?: S(p.usecase), account: S(p.account), status: S(p.status), done: DONE.contains(S(p.status).toLowerCase()), t: t,
+                                  src: SRC(S(p.created_from)), link: link, sid: S(p.source_record_id), id: S(r.id)] } }
+def A = L('asg').collect { it.properties ?: [:] }
+int read = A.count { a -> def t = null; try { t = Instant.parse(S(a.message_datetime)) } catch (e) { }; a.row_kind == 'checked' && t != null && !t.isBefore(since) }
+def prog = A.find { it.row_kind == 'progress' }
+def E = L('eng').collectEntries { [S(it.id).toLowerCase(), it.properties ?: [:]] }
+def people = L('um').collect { it.properties ?: [:] }.findAll { S(it.role).toLowerCase().contains('forward deployed') && S(it.emp_email).contains('@') }.collectEntries { [S(it.emp_email).toLowerCase(), it] }
+def writes = []; def cnt = [:].withDefault { 0 }; int total = 0
+people.each { email, u ->
+  def all = items[email]
+  // one piece of work per Slack conversation + task text; a CXO Slack task on the same message as a Slack assignment is the same work
+  def asgLinks = all.findAll { it.src == 'asg' && it.link }.collect { it.link } as Set
+  def its = all.findAll { !(it.src == 'cxo' && it.link && asgLinks.contains(it.link)) }.unique { it.src == 'tracker' ? it.id : (it.link ?: it.sid) + '|' + it.task.toLowerCase() }
+  total += its.size(); its.each { bySrc[it.src]++ }
+  def w = [0, 0, 0, 0]
+  its.each { def age = (nowI.epochSecond - it.t.epochSecond) / 86400; w[age < 7 ? 3 : age < 14 ? 2 : age < 21 ? 1 : 0]++ }
+  def weeks = w.count { it > 0 }
+  def band = its.isEmpty() ? 'Zero' : (weeks >= 3 ? 'Engaged' : 'Low')
+  cnt[band]++
+  def accs = its.countBy { it.account }.sort { -it.value }.keySet().findAll { it }.toList()
+  def recent = its.sort { a, b -> b.t <=> a.t }.take(3).collect { def d = it.t.atZone(ZONE).toLocalDate(); it.task + ' (' + it.account + ', ' + d.dayOfMonth + ' ' + MON[d.monthValue] + ')' }
+  def p = new LinkedHashMap(E[email] ?: [:])
+  p.putAll([email: email, name: S(u.emp_name), role: S(u.role), manager_email: S(u.manager_email).toLowerCase(),
+            assigned_30d: its.size(), assigned_w1: w[0], assigned_w2: w[1], assigned_w3: w[2], assigned_w4: w[3], weeks_assigned: weeks,
+            open_n: its.count { !it.done }, done_n: its.count { it.done }, accounts: accs.take(6).join(', '), accounts_n: accs.size(),
+            recent_work: recent.join(' · '), last_assigned_at: its ? its.collect { it.t.toEpochMilli() }.max() : null, band: band, updated_at: now])
+  writes << [id: email, payload: p] }
+def summary = [fdse: people.size(), engaged: cnt['Engaged'], low: cnt['Low'], zero: cnt['Zero'], assignments: total, conversations_read: read,
+               conversations_pending: prog ? S(prog.task) : '', source: 'task_tracker', from_slack_asg: bySrc['asg'], from_slack_cxo: bySrc['cxo'], from_tracker: bySrc['tracker']]
+writes << [id: '__summary__', payload: [email: '__summary__', band: '__summary__', name: JsonOutput.toJson(summary), updated_at: now]]
+return [writes: writes, summary: summary]
+"""
+
+def score3_wf():
+    LW = f"n_lw@{W.G}@l"
+    nodes = [W.start({}, []),
+             SE.fetch("n_tk", "Task tracker", "db_task_tracker", 2, limit=20000), SE.fetch("n_asg", "Slack conversations read", "db_slack_assignments", 3, limit=20000),
+             SE.fetch("n_um", "People", "db_user_management", 4), SE.fetch("n_eng", "Engagement rows", "db_fdse_slack_engagement", 5),
+             W.groovy("n_s", "Work given per FDSE (30 days, from the task tracker)", SCORE3, {"tasks": W.arr("n_tk.outputs.objects"), "asg": W.arr("n_asg.outputs.objects"),
+                      "um": W.arr("n_um.outputs.objects"), "eng": W.arr("n_eng.outputs.objects")},
+                      {"tasks": "array", "asg": "array", "um": "array", "eng": "array"}, {"writes": {"type": "array", "items": W.ROW}, "summary": {"type": "object"}}, 6),
+             lp("n_lw", "For each FDSE", "{{ n_s.outputs.result.writes }}", 7),
+             SE.upsert("n_w", "db_fdse_slack_engagement", None, 8, group=LW, id_expr="{{ n_lw.outputs.item.id }}", row_expr="{{ n_lw.outputs.item.payload }}"),
+             W.stop("{{ n_s.outputs.result.summary }}", 9)]
+    E = W.e
+    return nodes, [E("n_in", "n_tk"), E("n_tk", "n_asg"), E("n_asg", "n_um"), E("n_um", "n_eng"), E("n_eng", "n_s"), E("n_s", "n_lw"), E("n_lw", "n_w", "loop"), E("n_w", "n_lw", "next", name="loopback"), E("n_lw", "n_out")]
+
+if __name__ == "__main__" and "score3" in sys.argv[1:]:
+    nodes, edges = score3_wf()
+    wid, ver, viol = W.save("DB | FDSE | Slack engagement | Score", "Per FDSE: work given over the last 30 days from db_task_tracker (Slack assignment tasks, Slack CXO tasks and tasks logged in the tracker), by week, open/done from the tracker status, recent work, and the band (Engaged / Low / Zero).",
+                            nodes, edges, wid=SE.reg().get("slack_eng_score"))
+    print("score3:", wid, ver, viol, W.deploy(wid, "work given, from the task tracker") if not viol else "")

@@ -13,7 +13,7 @@ import fu_page as FU
 LOAD_DEFAULT = "grid" if "--grid" in __import__("sys").argv else "scatter"
 WIN_DEFAULT = "30" if "--month" in __import__("sys").argv else "7"
 V_MGR, V_TAB, V_CELL, V_LIM, V_LOAD, V_WIN = FU.V_MGR, "var_futab", "var_fucell", "var_fulim", "var_fuload", "var_fuwin"
-V_MODE, V_ETAB, V_ELIM = "var_fumode", "var_fuetab", "var_fuelim"   # Upcoming load / Slack engagement; engagement tab and list limit
+V_MODE, V_ETAB, V_ELIM = "var_fumode", "var_fuetab", "var_fuelim"   # load (This week / Next 30 days) or slack (Past 30 days); engagement tab and list limit
 MODE_DEFAULT = "slack" if "--slack" in __import__("sys").argv else "load"
 MODE = "(" + V_MODE + "['value'] || 'load')"
 CAP = "font-size:12px !important; letter-spacing:.12em; text-transform:uppercase; color:var(--fu-muted) !important;"
@@ -57,10 +57,6 @@ def build(pg, ds, eds):
     t(tl, "FDSE utilisation", "text-md", "semi-bold")
     t(tl, "{{ " + MODE + " === 'slack' ? (" + eds + "['data']?.['eng']?.['asof'] || 'Loading…') : (" + C + "?.['asof'] || 'Loading…') }}", css=MUTE)
     trr = box(tr, "gap:12px; align-items:center; flex-wrap:wrap;", direction="row")
-    mt = box(trr, "gap:0; border:1px solid var(--fu-line); border-radius:999px; background:var(--fu-hover); padding:3px;", direction="row", name="mode_toggle")
-    for key, lab in (("load", "Upcoming load"), ("slack", "Slack engagement")):
-        b = box(mt, "padding:4px 14px; border-radius:999px; cursor:pointer;", {"data-fu-on": "{{ " + MODE + " === '" + key + "' ? 'yes' : 'no' }}"}, name="mode_" + key)
-        t(b, lab, css="white-space:nowrap;"); pg.blocks[b]["events"] = [setv(V_MODE, key, "fumode" + key)]
     cr = pg.repeat(trr, "{{ " + ds + "['data']['tier']?.['crumbs'] || [] }}", "crumbs", gap="gap-xs")
     pg.blocks[cr]["component"]["appearance"].update({"layout": "list", "direction": "horizontal"})
     cb = box(cr, "align-items:center; gap:6px; cursor:pointer; width:auto !important;", direction="row", name="crumb")
@@ -68,11 +64,13 @@ def build(pg, ds, eds):
     t(cb, it(cr, "name"), weight="medium", css="white-space:nowrap;", attrs={"data-fu-crumb": it(cr, "last")})
     t(cb, "›", css=MUTE, visible=show(it(cr, "last"), "no"))
     WINX = "(" + V_WIN + "['value'] || '7')"
-    pc_ = box(trr, "gap:0; border:1px solid var(--fu-line); border-radius:999px; background:var(--fu-hover); padding:3px;", direction="row", name="period_toggle",
-              visible=show("{{ " + MODE + " === 'load' ? 'yes' : 'no' }}"))
-    for key, lab in (("7", "This week"), ("30", "Next 30 days")):
-        b = box(pc_, "padding:4px 14px; border-radius:999px; cursor:pointer;", {"data-fu-on": "{{ " + WINX + " === '" + key + "' ? 'yes' : 'no' }}"}, name="period_" + key)
-        t(b, lab, css="white-space:nowrap;"); pg.blocks[b]["events"] = [setv(V_WIN, key, "fuwin" + key), setv(V_CELL, "", "fuwinc" + key), setv(V_LIM, "25", "fuwinl" + key), setv(V_TAB, "", "fuwint" + key)]
+    pc_ = box(trr, "gap:0; border:1px solid var(--fu-line); border-radius:999px; background:var(--fu-hover); padding:3px;", direction="row", name="period_toggle")
+    for key, lab in (("past", "Past 30 days"), ("7", "This week"), ("30", "Next 30 days")):   # past 30 days = work given (task tracker); the others = upcoming load
+        on = (MODE + " === 'slack'") if key == "past" else ("(" + MODE + " === 'load' && " + WINX + " === '" + key + "')")
+        b = box(pc_, "padding:4px 14px; border-radius:999px; cursor:pointer;", {"data-fu-on": "{{ " + on + " ? 'yes' : 'no' }}"}, name="period_" + key)
+        t(b, lab, css="white-space:nowrap;")
+        pg.blocks[b]["events"] = ([setv(V_MODE, "slack", "fumodepast"), setv(V_ETAB, "", "fuetabpast"), setv(V_ELIM, "25", "fuelimpast")] if key == "past" else
+                                  [setv(V_MODE, "load", "fumode" + key), setv(V_WIN, key, "fuwin" + key), setv(V_CELL, "", "fuwinc" + key), setv(V_LIM, "25", "fuwinl" + key), setv(V_TAB, "", "fuwint" + key)])
 
     body = box(main, "gap:16px;", name="body", visible=show("{{ (" + C + " && " + MODE + " === 'load') ? 'yes' : 'no' }}"))
     build_eng(pg, eds, main, grid, button, chead, dot)
@@ -229,7 +227,7 @@ def build(pg, ds, eds):
     return root
 
 def build_eng(pg, eds, main, grid, button, chead, dot):
-    """Slack engagement view: who was @-tagged in a mapped account channel over the past 30 days (Engaged / Low / Zero / Not on Slack)."""
+    """Past 30 days view: work given to each FDSE over the past 30 days, from the task tracker (Engaged / Low / Zero)."""
     EC = eds + "['data']?.['eng']"
     D = lambda *k: "{{ " + EC + "?." + "?.".join(f"['{x}']" for x in k) + " }}"
     E = lambda js: "{{ " + js.replace("$E", EC) + " }}"
@@ -246,7 +244,7 @@ def build_eng(pg, eds, main, grid, button, chead, dot):
     t(br, D("coverage"), css=MUTE + " margin-top:12px !important; padding-top:16px; border-top:1px solid var(--fu-line); max-width:80ch;")
     # people
     pc = box(eb, CARD, name="eng_people")
-    chead(pc, "People", "Work given in Slack each week, oldest week first. Zero means nothing was given to them in any mapped account channel in the past 30 days.")
+    chead(pc, "People", "Tasks given each week, oldest week first. Zero means no task in the task tracker was given to them in the past 30 days.")
     tb = pg.repeat(pc, D("tabs"), "eng_tabs", gap="gap-none")
     pg.blocks[tb]["component"]["appearance"].update({"layout": "list", "direction": "horizontal"})
     tbi = box(tb, "gap:6px; align-items:center; padding:8px 16px 8px 0; margin-right:16px; border-bottom:2px solid transparent; cursor:pointer; width:auto !important;",
@@ -304,9 +302,9 @@ def build_eng(pg, eds, main, grid, button, chead, dot):
     t(lc, D("no_leaders"), css=MUTE, visible=show(D("has_leaders"), "no"))
     # notes
     nt = box(eb, "gap:4px; max-width:90ch; padding:0 4px;", name="eng_notes")
-    for line in ("Work given means a message or thread reply in a mapped account channel that asks the person to do something, hands them an item, or shows them owning one (for example '@name can you…', 'please pick this', 'POC - name', '@name in progress ETA…'). A tag on its own doesn't count: cc lists, FYIs, thanks and @group broadcasts are left out. Each piece of work is also added to the task tracker as a 'Slack assignment' task.",
-                 "Engaged means work was given in 3 or 4 of the last 4 weeks, low in 1 or 2 weeks, zero in none. FDSEs are people whose role in user management says Forward Deployed Engineer. Open and done come from what the conversation says.",
-                 "Conversations come from db_slack_conversations (fetched daily for the previous day) and are read by the Slack Task Assignment agent every hour, newest first. Status is the share of a leader's FDSEs given no work: red at 40% or more, amber 20 to 39%, green below 20%."):
+    for line in ("Work given means a task in the task tracker owned by the person and given in the past 30 days. Most come from Slack: the Slack Task Assignment agent reads every mapped account channel and adds a 'Slack assignment' task whenever someone is asked to do something, handed an item or shown owning one ('@name can you…', 'please pick this', 'POC - name', '@name in progress ETA…'); a tag on its own, cc lists, FYIs, thanks and @group broadcasts don't count. Tasks from the Slack CXO records and tasks logged directly in the tracker count too.",
+                 "The date a task was given is its Slack message date for Slack tasks, otherwise the date it was added to the tracker. A Slack CXO task on the same message as a Slack assignment counts once. Open and done come from the task's status in the tracker.",
+                 "Engaged means work was given in 3 or 4 of the last 4 weeks, low in 1 or 2 weeks, zero in none. FDSEs are people whose role in user management says Forward Deployed Engineer. Slack is fetched daily for the previous day and read every hour. Status is the share of a leader's FDSEs given no work: red at 40% or more, amber 20 to 39%, green below 20%."):
         t(nt, line, css=MUTE + " line-height:1.6;")
     return eb
 
