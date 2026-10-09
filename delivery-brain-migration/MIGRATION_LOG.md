@@ -303,6 +303,18 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
 - Prod copies before: prod_wf_6a61bce1385ecf7fb1742b6e_v17, prod_wf_6a992dc4a68c650ee244474d_v10,
   prod_page_e_6a4b4ab7a57cfe022ab0b960_v7248.
 
+## VOC "No sentiment" pill (9 Oct ~21:30Z, on request; page unchanged)
+
+- The pill reads chartStats[3].accounts, but DB | Fetch Executive Dashboard Stats returned only Green / Amber / Red, so it was blank.
+  Its step n_C9f7t now appends {status: "No Sentiment", accounts: N}, N = accounts in the user's scope (non-churned account_db,
+  RBAC) with no sentiment score in the selected period. Nothing else in the response changes (tested old vs new on prod: admin,
+  last 30 days -> 43 / 15 / 6 / 36 = 100 total accounts, 36 equals the existing acc_with_no_sentiments; scoped user -> 0).
+- Prod v67 -> v68 and UAT v72 -> v73, deployed, identical. Workflows are live on deploy; no page publish needed.
+- Side effects of the 4th entry: the page's Green / Amber / Red percentages are now shares of all accounts in scope (they add up
+  with No sentiment to Total), and the pie chart on "Voice Of Customer Dashboard - Clone" gains a No Sentiment slice. The No
+  sentiment pill's own % still shows the Red percentage (page binding, left as is).
+- Prod copy before: prod_backups/slices/prod_wf_6a6d060ca36c357436252758_v67.json.gz.
+
 ## Not moved (by the plan or on purpose)
 
 - DB | Portfolio Dashboard stays prod's (plan).
