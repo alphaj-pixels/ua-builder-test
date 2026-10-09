@@ -235,8 +235,14 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   - Sub-stages copied (decision 9 Oct): for the 67 use cases whose stage is the same in both environments, sub_stage and
     sub_stage_source were copied from UAT (sub_stage_locked was empty in UAT too); no other field changed. The 5 whose stage
     has moved on in prod were skipped. Prod now has 67 sub-stages; Module 2's list returns them (AMN: 7 UAT, 1 Build).
-    Prod rows before the copy: prod_backups/slices/prod_db_account_usecase_before_substage.json.gz. New sub-stages come only
-    from people editing the column until something in prod runs the stage extractor.
+    Prod rows before the copy: prod_backups/slices/prod_db_account_usecase_before_substage.json.gz.
+  - Stage extractor nightly in prod (decision 9 Oct): new workflow DB | Use Case Stage Extractor | Nightly
+    (6ac94090c221fa0b367b7667), 22:30 IST, calls DB | Use Case Stage Extractor | Run with no account list, so it covers accounts
+    with update emails or Slack signals in the last two weeks and at least one use case not Live. It is UAT's
+    DB | Classify CXO Signals without the classify step (that step is UAT-only and tied to the frozen object). The extractor
+    leaves locked fields alone. Tested first on AMN (C_293), 28 s: 3 use cases updated (next milestone, planned go-live, one new
+    sub-stage) and the week's snapshot row; AMN before the test: prod_backups/slices/prod_amn_before_stage_extractor.json.gz.
+    First scheduled run: 10 Oct 22:30 IST.
   - Prod copies before the change: prod_backups/slices/prod_page_e_6a83f68e4e1cc146c887ed69_v4546.json.gz and prod_ds_*.
 - Customer Hub / account-directory (decision 9 Oct: keep prod's inline editing, add UAT's approvals and links), app published
   v147 -> v148 (~19:10Z). Page v3117 -> v3118:
