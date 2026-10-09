@@ -91,6 +91,42 @@ query now returns all 10 for an admin and none before the scope loads. No publis
 Other RBAC-filtered VOC sources checked on prod data: meetings analysed 2,648 -> 2,647 (one row for C_350, which is not
 in account_db); the Program Lead filter list 135 -> 122 rows (team rows for accounts no longer in account_db).
 
+## Batch 2 — slices 2-4 and the other non-merge pages (9 Oct, ~15:00-15:50Z), app published v142 -> v143
+
+Inventory of the whole app (77 workflows reached from data sources, incl. nested calls; 331 / 321 data sources; 38 / 42 pages):
+42 workflows identical, 12 UAT-ahead (promote), 11 new in UAT, 10 changed on both sides, 2 prod-only (the prod FDSE builds).
+
+RBAC fixes found on the way (applied in UAT and prod, so both stay identical):
+- Admin gate. A fetch filter with an empty or missing list matches nothing, so "all accounts" for admins was passed as every
+  account name / id, and records whose account name did not match account_db exactly disappeared (db | task list showed 147 of
+  243 use cases). The RBAC step now also returns `f_op` / `f_ids` / `f_names`: admins (scope `*`) get `NOT_IN ['__never__']`
+  (no filtering at all), everyone else `IN` their list. Every RBAC filter in the promoted workflows uses them (`rbac_gate.py`).
+- DB | fetch all accounts: UAT's RBAC change had replaced prod's sentiment filters (call transcripts, new interactions, date)
+  instead of adding to them; restored.
+- Use Case Hub accounts data source keeps prod's not-churned filter next to RBAC.
+
+Workflows (prod backups in prod_backups/slices, UAT backups in uat_backups): fetch-acc-stats, db | get pmpl, Get Projects and
+Use Cases, steer calls this week, Cohort 1, fetch all accounts, pm-account-details, db | task list (all gated), My Workllist,
+Trend table, Update use case fields (adds the stage rules). Each read-only one was run on prod before saving, prod version vs
+the new one, same inputs: identical outputs for admins. Non-admin check (task list): admin 243 use cases, a team member 48,
+before the scope loads 0. The 8 VOC workflows from slice 1 got the same gate (identical to their pre-RBAC prod output).
+
+Data sources: RBAC on 20 pages (CXO_dashboard, Use Case Hub, Use case new, Project Related Assets, All_use_case, Accounts,
+All Projects - Clone, PM Control Tower, Projects, Signal Details, Steer calls, Task Management, Use Cases, cohort-dashboard,
+unidentified-meetings, Module 1, global page, VOC - Clone, account-directory, Account Health Dashboard) and Module 2's
+update-use-case source (failure message). Kept prod's: CXO "task management use cases" (prod's newer db_account_usecase
+version) and VOC meetings_analyzed (edited in prod at 14:27Z). Data-source filters themselves still use the plain RBAC lists
+(94 by account id, 17 by account name): an admin can miss records whose account name does not match account_db.
+Prod accepts the RBAC parameters on workflows that do not declare them (checked), so out-of-scope merges are unaffected.
+
+Pages: Use Case Hub (whitespace), Project Related Assets (two tab settings normalised), Use case new (Task Management link
+function; prod points at task-management-application-clone-unifyapps-sales.matrix-prod.unifyapps.com/account-details, UAT at
+UAT). Left as they are: account-directory (changed on both sides), Account Health Dashboard (blocks identical), Module 2 and
+the navigation pages (out-of-scope merges). CXO_dashboard moves with slice 5 (its new card needs the Account 360 workflows).
+
+FDSE utilisation navigation: removed from the app's built-in menu (it showed for everyone); the Desktop Navigation card stays,
+visible only to Sumeet, Alpha, Naman, Dana and Jay (UAT: Sumeet and Alpha).
+
 ## Next: slice 2 onward
 
 The RBAC scope also runs through the data sources of 27 UAT pages (e.g. Account Detail 41/65, Project Related Assets 20/31,
