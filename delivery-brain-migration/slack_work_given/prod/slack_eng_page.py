@@ -86,16 +86,16 @@ def build = { String M ->
   def yTicks = (1..YN).collect { k -> [id: 'y' + k, v: k + (is7 ? (k == 1 ? ' day' : ' days') : (k == 1 ? ' week' : ' weeks')), pos: (Math.round((k - 0.5) / YN * 100) as int).toString()] }
   def xLabels = (0..5).collect { k -> k == 5 ? XM + '+' : ((XM * k / 5) as int).toString() }
   def period = is7 ? 'past 7 days' : 'past 30 days'
-  def leadTxt = n == 0 ? ('No one reports into ' + fname + '.') : ((cnt['zero'] ?: 0) + ' of ' + fd(n) + ' in ' + fname + "'s team " + ((cnt['zero'] ?: 0) == 1 ? 'was' : 'were') + ' given no work in the ' + period + '.')
-  if (rd == 0 && tot == 0) leadTxt = 'Still reading Slack conversations for work given to people. Check back in an hour.'
+  def leadTxt = n == 0 ? ('No one reports into ' + fname + '.') : ((cnt['zero'] ?: 0) + ' of ' + fd(n) + ' in ' + fname + "'s team had no Slack engagement in the " + period + '.')
+  if (rd == 0 && tot == 0) leadTxt = 'Still reading Slack conversations for engagement. Check back in an hour.'
   else if (pend > 0) leadTxt = 'So far, ' + leadTxt.substring(0, 1).toLowerCase() + leadTxt.substring(1)
-  def readTxt = ' ' + rd + ' Slack conversations read.' + (pend ? ' ' + pend + ' more are still being read, so counts will rise.' : '')
+  def readTxt = pend ? ' ' + pend + ' more conversations are still being read, so counts will rise.' : ''
   [asof: 'Slack engagement, ' + period + ' ' + win + '. ' + fd(n) + ' in ' + fname + "'s team" + (upd ? ' · updated ' + fmt(upd.toLocalDate()) + ' ' + String.format('%02d:%02d', upd.hour, upd.minute) : ''),
    label: 'Slack engagement · ' + period + ' · ' + fname + "'s team", lead: leadTxt, mode: M,
-   rest: n == 0 ? '' : (is7 ? ((cnt['engaged'] ?: 0) + ' were given work on 3 or more of the last 7 days, and ' + (cnt['low'] ?: 0) + ' on only 1 or 2 days.')
-                            : ((cnt['engaged'] ?: 0) + ' were given work in 3 or 4 of the last 4 weeks, and ' + (cnt['low'] ?: 0) + ' in only 1 or 2 weeks.')),
-   coverage: is7 ? ('From the task tracker: ' + tot7 + " tasks given to people in Sumeet Nandal's tree in the past 7 days." + readTxt)
-     : ('From the task tracker: ' + tot + " tasks given to people in Sumeet Nandal's tree in the past 30 days, " + fromAsg + ' found in Slack conversations by the Slack Task Assignment agent, ' + fromCxo + ' from Slack CXO records and ' + (fromTrk ? fromTrk + ' logged directly in the tracker.' : 'none logged directly in the tracker.') + readTxt),
+   rest: n == 0 ? '' : (is7 ? ((cnt['engaged'] ?: 0) + ' were engaged on 3 or more of the last 7 days, and ' + (cnt['low'] ?: 0) + ' had low engagement, on only 1 or 2 days.')
+                            : ((cnt['engaged'] ?: 0) + ' were engaged in 3 or 4 of the last 4 weeks, and ' + (cnt['low'] ?: 0) + ' had low engagement, in only 1 or 2 weeks.')),
+   coverage: is7 ? ('Engagement is read from ' + rd + ' Slack conversations in mapped account channels: people were asked to do something, handed an item or shown owning one ' + tot7 + ' times in the past 7 days.' + readTxt)
+     : ('Engagement is read from ' + rd + ' Slack conversations in mapped account channels and the Slack CXO records: people were asked to do something, handed an item or shown owning one ' + (fromAsg + fromCxo) + ' times in the past 30 days (' + fromAsg + ' in conversations, ' + fromCxo + ' in CXO records).' + readTxt),
    people_sub: is7 ? 'Tasks given each day, oldest day first. Zero means no task in the task tracker was given to them in the past 7 days.' : 'Tasks given each week, oldest week first. Zero means no task in the task tracker was given to them in the past 30 days.',
    sc_sub: 'Each dot is one person. Across: pieces of work given in the ' + period + '. Up: how many of the last ' + (is7 ? '7 days' : '4 weeks') + ' they were given work. People given no work sit in the left lane. Hover a dot for the name.',
    note_top: is7 ? 'Engaged: work on 3 or more days' : 'Engaged: work in 3 or 4 weeks', note_bottom: is7 ? 'Low: work on 1 or 2 days' : 'Low: work in 1 or 2 weeks',
