@@ -231,7 +231,12 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
     account name is not in account_db, are filtered out of the "new use cases" table even for admins.
   - Sub-stages are empty in prod (0 of 852). In UAT the stage extractor runs only when DB | Classify CXO Signals calls it
     (the Slack signals pipeline, tied to the frozen db_cxo_intelligence_slack); nothing in prod calls it. UAT's 72 values
-    match prod's use cases by id (67 with the same stage). Until filled, the column is for manual entry.
+    match prod's use cases by id (67 with the same stage).
+  - Sub-stages copied (decision 9 Oct): for the 67 use cases whose stage is the same in both environments, sub_stage and
+    sub_stage_source were copied from UAT (sub_stage_locked was empty in UAT too); no other field changed. The 5 whose stage
+    has moved on in prod were skipped. Prod now has 67 sub-stages; Module 2's list returns them (AMN: 7 UAT, 1 Build).
+    Prod rows before the copy: prod_backups/slices/prod_db_account_usecase_before_substage.json.gz. New sub-stages come only
+    from people editing the column until something in prod runs the stage extractor.
   - Prod copies before the change: prod_backups/slices/prod_page_e_6a83f68e4e1cc146c887ed69_v4546.json.gz and prod_ds_*.
 - Pages, still prod's:
   - account-directory: data sources already match UAT. UAT adds an "Approval Required" tab over account_db_2 (0 rows in prod: it
