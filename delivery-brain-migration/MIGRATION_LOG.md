@@ -33,18 +33,53 @@ The other 7 were promoted with prod's envelope and UAT's content (name, descript
 - Run-status projections do work on prod with this session (`slice_mig.prod_test`), so test runs can be checked.
 - Rollback: save the matching file from `prod_backups/slices/` back with saveAndReturnViolations and deploy it.
 
-### Step 1.2 — data sources: on hold (decision needed)
+### RBAC base in prod: done (9 Oct, ~15:30Z, on request)
 
-All 21 data sources of Voice Of Customer Dashboard (19) and escalations (2) exist in prod under the same ids. 17 differ,
-and every difference is the same thing: UAT passes the signed-in user's account scope from a global data source
-`rbacScope` (`e_6ac14d1c1924167ba878f874`, global page) that calls `DB | RBAC | My accounts` (`6ac14cfce7e1e627524c771a`).
-Neither exists in prod. The UAT expressions fall back to `'__pending__'`, so copying them without rbacScope would
-show no accounts at all.
+- `DB | RBAC | My accounts` created in prod under UAT's id `6ac14cfce7e1e627524c771a` (v1, deployed, node hash equals UAT).
+- Global data source `rbacScope` created in prod under UAT's id `e_6ac14d1c1924167ba878f874` on the global page, identical
+  to UAT. It runs on page load with the signed-in user's email and an admin flag (a role whose name contains "admin" or "owner").
+- Rule: admins see every account (scope `*`); anyone else sees the accounts where their email is on db_team_members;
+  until the scope has loaded, pages show nothing (`'__pending__'`).
+- Tests on prod: admin → all 134 accounts; a team member → their accounts (32 and 10 for two people); an email with no
+  team rows → none. The prod account used for this work has Owner / Admin / Super Admin roles.
+- The other two RBAC-aware global data sources (dbGetPmpl, dbSteerCallsThisWeek) move with their workflows in slices 2 and 4.
 
-RBAC rule in UAT: a user whose role name contains "admin" or "owner" sees every account; anyone else sees the accounts
-where their email is on db_team_members. Prod has the data (642 team rows with email, 224 people, 106 accounts).
+### Step 1.2 — data sources: done
 
-The same dependency runs through 27 UAT pages' data sources (e.g. Account Detail 41/65, Project Related Assets 20/31,
-Voice Of Customer Dashboard 15/19, Account Health Dashboard 12/42, CXO_dashboard 6/14, global page 3/5). The plan's
-"identical → skip" checks compared page blocks only, so Account Health Dashboard, Signal Details and others are not
-identical once data sources are counted.
+All 21 data sources of Voice Of Customer Dashboard (19) and escalations (2) exist in prod under the same ids. 16 differed
+(15 + 1), each only by the RBAC scope (filters / `rbac_scope`, `rbac_names` parameters reading rbacScope). All 16 now
+equal UAT; the other 5 were already identical. Prod copies are in `prod_backups/slices/prod_ds_*`.
+
+### Step 1.3 — pages: done
+
+- Voice Of Customer Dashboard `e_6a61aec66454dc4d222120c8`: v10919 → v10920, 372 → 381 blocks. UAT was strictly ahead
+  (9 new blocks, 7 changed, none only in prod).
+- escalations `e_6aa7f95e282c94597434a1fb`: v821 → v822, 69 → 138 blocks. The page was created in prod on 14 Sep and copied
+  to UAT on 23 Sep; UAT rebuilt it (Escalations / Risks / Commitments). The 45 blocks only in prod are the old layout.
+  Since the canary deploy of the drill-through workflow, the live prod page had been reading fields the new output no
+  longer has (`escalation_count`, `rows`), so its counts and rows were blank until this publish.
+- Every UAT page reference (data sources, pages) resolves in prod.
+
+### Publish: app v141 → v142 (9 Oct, ~15:45Z)
+
+Checked first that no other page, data source or app setting had unpublished changes. One did: FDSE utilisation, whose
+11:38Z draft (shared prod account) replaced the two drawers' "Close ✕" texts with icon buttons; that went live with this
+publish. Its previous live copy is `prod_backups/slices/prod_live_page_e_6ac7d2b475dffa07574b3452_app141.json.gz`.
+After publishing: both live pages equal UAT; all 17 data sources (16 + rbacScope) are live and equal their drafts.
+
+### Step 1.4 — verify: done
+
+1. All 8 workflows: node/edge hash equals UAT, deployed, no violations.
+2. Test runs on prod with RBAC scopes: VoC Escalations Drill-Through admin 60 accounts affected / team member 5 / no scope 0;
+   improving-declining-week 100 / 8 / 0; fetch executive dashboard data admin 100 / no scope 0.
+3. Pages could not be opened here (the app's CDN is blocked from this environment); render check is for a person.
+4. db_sentiment_score is still being written (newest row 14:04Z on 9 Oct, 2,779 rows); none were changed.
+
+Rollback for Slice 1: restore files from `prod_backups/slices/` (workflows via saveAndReturnViolations + deploy, data sources
+via /api/entity/update, pages via the hierarchical update), delete rbacScope and the RBAC workflow, then publish.
+
+## Next: slice 2 onward
+
+The RBAC scope also runs through the data sources of 27 UAT pages (e.g. Account Detail 41/65, Project Related Assets 20/31,
+Account Health Dashboard 12/42, CXO_dashboard 6/14). The plan's "identical → skip" checks compared page blocks only, so
+pages such as Account Health Dashboard and Signal Details still need their data sources synced even where blocks match.
