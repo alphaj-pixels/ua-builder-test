@@ -289,7 +289,9 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
 ## Not moved (by the plan or on purpose)
 
 - DB | Portfolio Dashboard stays prod's (plan).
-- DB | Add Account Id to transcripts (UAT-ahead but uses UAT's connection and feeds sentiment scoring): left as prod's.
+- DB | Add Account Id to transcripts: re-checked 9 Oct - UAT differs only in the Slack connection id on its 4 Slack steps (UAT's
+  "slack connection for all DB", which prod does not have). Prod's version, on prod's own Slack connection, already has the same
+  logic, so nothing to move.
 - Account Health Dashboard page (blocks identical), VOC meetings_analyzed data source (edited in prod after the promotion).
 
 ## Next: slice 2 onward
