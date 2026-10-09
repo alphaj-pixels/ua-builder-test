@@ -169,6 +169,25 @@ published on 1 Oct 09:14Z by 24369 (an import: ~80 workflows saved at that minut
 - Global data sources fetchRecordsDbSentimentScore2 and dbSteerCallsThisWeek were found with the RBAC filter / dynamic paths
   added twice by user 24365 (15:35Z); reset to UAT before publishing.
 
+## Slice 5 — finished (9 Oct ~18:00-19:00Z), app published v144 -> v145
+
+- Agents: the five Account 360 agents and their tasks copied from UAT with the same ids (Risk Theme, Composer, Daily Account
+  Summariser, Use Case Stage Extractor, Weekly Account Snapshot); same answer model as prod's other agents (e_6a7e03d5…); their
+  unused indexing settings left out. The four workflows that call them are deployed.
+- Email window: in prod "all accounts" email fetches exceeded the platform's 100 MB step limit (423 MB). Account 360 | Health,
+  Account 360 | Run, Account Health Page | Data, Daily Account Report | Run and Use Case Stage Extractor | Run now read only
+  the past 14 days of email (a small step computes the cut-off; filter on db_gmails_as_knowledge.date). Emails are only used to
+  spot the next booked meeting from invites. Same change in UAT. All-accounts health: 6 s, 143 emails.
+- Backfill: UAT's last two weeks copied into prod with the same ids — db_account_360 14, db_account_daily_report 489,
+  db_usecase_daily_report 954, db_weekly_account_snapshot 10 (prod had none). AMN (C_293) was then run end to end in prod:
+  daily report, health for all 100 accounts, Risk Theme + Composer, new current Account 360 row.
+- Nightly: DB | Daily Account Report deployed (23:00 IST); tonight's run replaces the copied rows with prod-computed ones.
+  Still not deployed: DB | Attention Accounts to Slack (needs prod's Slack connection), sync-Atlas-projects-and-issues.
+- Pages: Account Detail (1219 -> 2053 blocks; the Account Health tab is replaced by Account overview / Account 360 / Weekly 360)
+  with 36 data sources updated and 9 created; CXO_dashboard (502 -> 513 blocks, attention card) with its card's data source.
+  Prod's "task management use cases" source on CXO_dashboard kept. Checked after publishing: Account overview, Account 360,
+  Weekly 360 and task list data for AMN all return.
+
 ## Closing checks (9 Oct ~17:35Z)
 
 DB | sync acc to HS, DB | update Account Region and get-meetings are paused; Delivery Brain | Usecase Timeline is deployed;
