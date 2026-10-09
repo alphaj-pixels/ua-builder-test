@@ -211,9 +211,12 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   Prod versions: Fetch Account Directory 80 -> 81, get pmpl (copy) 89 -> 90, patches and regions 19 -> 20, cohort-0 30 -> 31,
   Cohort 2 6 -> 7, cohort-3 15 -> 16, Accounts region wise 27 -> 28, fetch use cases 25 -> 26, all deployed. Prod copies before
   the change: prod_backups/slices/prod_wf_<id>_v<old>.json.gz.
+- Navigation (decision 9 Oct): prod's desktop and mobile menus now hide the CXO item from non-admins, using UAT's visibility rule
+  on that one block only (Desktop Navigation v56 -> v57, Mobile Navigation v50 -> v51). Prod's FDSE item (5 people, prod's page)
+  is unchanged. App published v145 -> v146 (~18:10Z). Before publishing, the two global data sources 24365's builder had saved
+  again at 17:57Z (fetchRecordsDbSentimentScore2 with 3 duplicate RBAC filters, dbSteerCallsThisWeek with duplicate paths) were
+  reset to the published copy (= UAT); the publish contained only the two menu changes.
 - Pages, still prod's:
-  - Desktop / Mobile Navigation: the only UAT difference worth taking is the CXO item hidden from non-admins (asked for on 3 Oct;
-    the CXO page itself already checks for admin in prod). Prod's FDSE item (5 people, prod's page) must stay.
   - Module 2: changed on both sides. UAT adds the Sub-stage column with lock/override, a Go Live Date column filter, stage
     wording and tooltip, and RBAC on its data sources. Prod adds the Vertical dropdown in the create form, the listUseCases count
     and a Go Live filter with no default range.
