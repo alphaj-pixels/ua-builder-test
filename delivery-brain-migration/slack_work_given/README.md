@@ -31,3 +31,10 @@ creation time otherwise. That covers 'Slack assignment' tasks, Slack CXO tasks (
 Slack assignment) and tasks logged in the tracker. Open and done come from the tracker status (Done / Completed / Closed = done).
 Prod: 1,829 tasks (1,767 Slack assignment, 62 Slack CXO, 0 logged directly), Sumeet's team 160 zero / 73 low / 82 engaged of 315.
 App republished (version 133).
+
+Four buttons, 9 Oct 13:30 IST: `Slack engagement | Past 30 days | This week | Next 30 days`. Slack engagement is the view above
+(work given per week, Engaged / Low / Zero). Past 30 days is the utilisation view (same layout and bands as This week / Next 30 days)
+over the tasks assigned to each person in the last 30 days: `fdse_score.py` takes `window_days=past30`, counts every task in the
+tracker assigned in the window, done or not (Slack tasks dated by the Slack message, others by when they were added), each at its story
+points (1 when blank, waiting ×0.5), against 30/7 of weekly capacity; a Slack CXO task on the same message as a Slack assignment for
+the same person counts once. Built by `fdse_page_wf.py` (page data, `fdse_page`) and `fu_cap_page.py`. Prod app published (version 134).

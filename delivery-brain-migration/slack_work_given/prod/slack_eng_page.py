@@ -69,8 +69,8 @@ def upd = updated ? Instant.ofEpochMilli(updated).atZone(ZONE) : null
 def leadTxt = n == 0 ? ('No FDSEs report into ' + fname + '.') : ((cnt['zero'] ?: 0) + ' of ' + fd(n) + ' in ' + fname + "'s team " + ((cnt['zero'] ?: 0) == 1 ? 'was' : 'were') + ' given no work in the past 30 days.')
 if (rd == 0 && tot == 0) leadTxt = 'Still reading Slack conversations for work given to FDSEs. Check back in an hour.'
 else if (pend > 0) leadTxt = 'So far, ' + leadTxt.substring(0, 1).toLowerCase() + leadTxt.substring(1)
-def eng = [asof: 'Work given, past 30 days ' + win + '. ' + fd(n) + ' in ' + fname + "'s team" + (upd ? ' · updated ' + fmt(upd.toLocalDate()) + ' ' + String.format('%02d:%02d', upd.hour, upd.minute) : ''),
-  label: 'Past 30 days · ' + fname + "'s team",
+def eng = [asof: 'Slack engagement, past 30 days ' + win + '. ' + fd(n) + ' in ' + fname + "'s team" + (upd ? ' · updated ' + fmt(upd.toLocalDate()) + ' ' + String.format('%02d:%02d', upd.hour, upd.minute) : ''),
+  label: 'Slack engagement · past 30 days · ' + fname + "'s team",
   lead: leadTxt,
   rest: n == 0 ? '' : ((cnt['engaged'] ?: 0) + ' were given work in 3 or 4 of the last 4 weeks, and ' + (cnt['low'] ?: 0) + ' in only 1 or 2 weeks.'),
   coverage: S(sum.source) == 'task_tracker' ? ('From the task tracker: ' + tot + ' tasks given to FDSEs across the company in the past 30 days, ' + fromAsg + ' found in Slack conversations by the Slack Task Assignment agent, ' + fromCxo + ' from Slack CXO records and ' + (fromTrk ? fromTrk + ' logged directly in the tracker.' : 'none logged directly in the tracker.') + ' ' + rd + ' Slack conversations read.' + (pend ? ' ' + pend + ' more are still being read, so counts will rise.' : ''))
@@ -93,7 +93,7 @@ def wf():
 if __name__ == "__main__":
     ua.ensure_session()
     nodes, edges = wf()
-    wid, ver, viol = W.save("DB | FDSE Slack Engagement Page | Data", "Data for the FDSE page's Past 30 days view: work given per FDSE (from the task tracker, via the score) in the viewer's scope, bands, by-leader counts.",
+    wid, ver, viol = W.save("DB | FDSE Slack Engagement Page | Data", "Data for the FDSE page's Slack engagement view: work given per FDSE (from the task tracker, via the score) in the viewer's scope, bands, by-leader counts.",
                             nodes, edges, wid=SE.reg().get("slack_eng_page"))
     SE.reg_set("slack_eng_page", wid); print("saved", wid, ver, viol)
     if not viol: print("deployed", W.deploy(wid, "FDSE Slack engagement page data"))
