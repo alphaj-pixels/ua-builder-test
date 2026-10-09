@@ -25,7 +25,8 @@ def roleOf = UM.collectEntries { [S(it.emp_email).toLowerCase(), S(it.role)] }
 def kids = mgr.groupBy { k, v -> v }.collectEntries { k, v -> [k, v.keySet() as List] }
 def descMemo = [:]
 def desc = { String m -> descMemo[m] ?: (descMemo[m] = { def out = [] as LinkedHashSet; def st = [m]; while (st) { def x = st.pop(); (kids[x] ?: []).each { c -> if (out.add(c)) st << c } }; out }()) }
-def inRoot = (desc(ROOT) + [ROOT]) as Set
+def SCOPE_TEAMS = ['shivam@unifyapps.com', 'sandeep.sharma@unifyapps.com']   // for now: only Shivam Satrawal's and Sandeep Sharma's teams (product and project management)
+def inRoot = ([ROOT] + SCOPE_TEAMS + SCOPE_TEAMS.collectMany { desc(it) as List }) as Set
 def top = isAdmin ? ROOT : me
 def want = S(binding.hasVariable('focus') ? focus : '').toLowerCase()
 def allowed = { String m -> m && inRoot.contains(m) && (isAdmin || m == me || desc(me).contains(m)) }
@@ -35,7 +36,7 @@ while (cur && g++ < 12) { crumbs.add(0, cur); if (cur == top) break; def up = mg
 def E = L('eng').collect { it.properties ?: [:] }.findAll { S(it.email) }.collectEntries { [S(it.email).toLowerCase(), it] }
 def sum = [:]; try { sum = new JsonSlurper().parseText(S(E['__summary__']?.name) ?: '{}') } catch (e) { }
 def updated = (E['__summary__']?.updated_at ?: 0) as long
-def scope = desc(F).findAll { E.containsKey(it) && it != '__summary__' }
+def scope = desc(F).findAll { inRoot.contains(it) && E.containsKey(it) && it != '__summary__' }
 def BK = ['Engaged': 'engaged', 'Low': 'low', 'Zero': 'zero']
 def TONE = [engaged: 'G', low: 'A', zero: 'R', none: 'X']
 def ago = { long ms -> if (!ms) return '—'; def d = (int) ((System.currentTimeMillis() - ms) / 86400000L); d <= 0 ? 'today' : (d == 1 ? 'yesterday' : d + ' days ago') }

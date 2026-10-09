@@ -38,3 +38,8 @@ over the tasks assigned to each person in the last 30 days: `fdse_score.py` take
 tracker assigned in the window, done or not (Slack tasks dated by the Slack message, others by when they were added), each at its story
 points (1 when blank, waiting ×0.5), against 30/7 of weekly capacity; a Slack CXO task on the same message as a Slack assignment for
 the same person counts once. Built by `fdse_page_wf.py` (page data, `fdse_page`) and `fu_cap_page.py`. Prod app published (version 134).
+
+Scope for now, 9 Oct 13:50 IST: every view shows only Shivam Satrawal's (`shivam@unifyapps.com`) and Sandeep Sharma's
+(`sandeep.sharma@unifyapps.com`) teams under Sumeet Nandal (`SCOPE_TEAMS` in `fdse_page_wf.py` and `slack_eng_page.py`); the other
+direct reports' teams (Aman Agarwal, Sudhir Yadav, Rahul Sethi, Yatendra Singh, Kuntal Beniwal) are hidden. No records were changed.
+To show everyone again, start the scope walk from `SCOPE_ROOT` instead of `SCOPE_TEAMS` and redeploy both data workflows.

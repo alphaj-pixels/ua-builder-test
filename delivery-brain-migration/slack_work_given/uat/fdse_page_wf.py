@@ -22,10 +22,11 @@ def upN = { String m, int k -> def x = m; k.times { x = x ? (umMgr[x] ?: '') : '
 def people = UM.collect { u -> def m = S(u.emp_email).toLowerCase(); def f = FD[m] ?: [:]
   [mail_id: m, fde: S(u.emp_name) ?: (S(f.fde) ?: m), designation: S(u.role) ?: S(f.designation), managerEmail: umMgr[m] ?: '', Manager: S(u.manager_name),
    lvlTwoManagerMail: upN(m, 2), lvlThreeManagerMail: upN(m, 3), lvlFourManagerMail: upN(m, 4), weeklyCapacity: f.weeklyCapacity] }.unique { it.mail_id }
-// scope: Sumeet Nandal and everyone below him in db_user_management (the page covers his team only)
+// scope: Sumeet Nandal and, for now, only Shivam Satrawal's and Sandeep Sharma's teams below him
 def SCOPE_ROOT = 'sumeet@unifyapps.com'
 def umKids = umMgr.groupBy { k, v -> v }.collectEntries { k, v -> [k, v.keySet() as List] }
-def inTeam = [SCOPE_ROOT] as Set; def stk = [SCOPE_ROOT]
+def SCOPE_TEAMS = ['shivam@unifyapps.com', 'sandeep.sharma@unifyapps.com']   // for now: only Shivam Satrawal's and Sandeep Sharma's teams (product and project management)
+def inTeam = [SCOPE_ROOT] as Set; def stk = SCOPE_TEAMS.findAll { umMgr.containsKey(it) }; inTeam.addAll(stk)
 while (stk) { def x = stk.pop(); (umKids[x] ?: []).each { c -> if (inTeam.add(c)) stk << c } }
 people = people.findAll { inTeam.contains(S(it.mail_id).toLowerCase()) }
 def nameOf = people.collectEntries { [S(it.mail_id).toLowerCase(), S(it.fde)] }
