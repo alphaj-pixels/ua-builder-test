@@ -127,6 +127,25 @@ the navigation pages (out-of-scope merges). CXO_dashboard moves with slice 5 (it
 FDSE utilisation navigation: removed from the app's built-in menu (it showed for everyone); the Desktop Navigation card stays,
 visible only to Sumeet, Alpha, Naman, Dana and Jay (UAT: Sumeet and Alpha).
 
+## Task Management app (task-management-application-clone), 9 Oct ~16:00-16:45Z, app published v8 -> v9
+
+Everything except `Task Management | Bulk Task Add Sheet` (left as it is in prod). Prod's Task Management app was last
+published on 1 Oct 09:14Z by 24369 (an import: ~80 workflows saved at that minute), so UAT edits after that are ahead.
+- Objects: prod has `task_management_task_tracker` / `task_management_account_usecase` (with data); UAT does not. Where prod's
+  current version reads one of these, prod's object is kept (DB | Task Management Application | Task NameWise, step n_Qtb2F);
+  Task UCwise and the Leads / SubLeads utilisation workflows stay as they are in prod (prod-specific objects / ids).
+- Workflows promoted (10): Application | Create Task, Create Usecase | Final, Fetch Account Directory (RBAC admin gate, in UAT
+  too), Fetch Accounts Usecases, Fetch Total Usecases, Task AccoutWise (v2), Task NameWise, Task NameWise - All Tasks,
+  update task, Application | Task NameWise. Read-only ones were run on prod before saving (identical, or only the new stage
+  labels added). Created (6, same ids as UAT): Account filters, Account people, Account team, Lead team, Task AccoutWise (v3),
+  Create Task 6ab78a91 (not deployed, as in UAT). 19 workflows exist only in prod and are untouched.
+- Data sources: 32 updated, 19 created (same ids). Team tiers' source points at prod's FDSE data workflow
+  (6ac7d2a8a28e363678239862) instead of UAT's (6ac15bd9e7e1e62752528074); same inputs.
+- Pages: Account Details, Accounts, FDSE Detail, Homepage, Lead Detail, Module 17, Module 6, Module 6 - Clone, usecaseModule;
+  Team tiers created (same id, in the page tree, not in the menu). Two unpublished prod tweaks kept on top of UAT and copied
+  into UAT: Account Details form field4 required (24592, 3 Oct); Accounts table column style (24369, 1 Oct).
+- 61 other pages were already identical.
+
 ## Next: slice 2 onward
 
 The RBAC scope also runs through the data sources of 27 UAT pages (e.g. Account Detail 41/65, Project Related Assets 20/31,
