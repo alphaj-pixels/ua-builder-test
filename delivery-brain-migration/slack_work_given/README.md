@@ -64,3 +64,10 @@ Everyone + Slack coverage, 9 Oct 14:30 IST (prod):
   no messages in the past 30 days. Prod: 53 of 120 accounts, 98 of 197 channels. App published (version 137).
 - Churned accounts are left out of "accounts with no Slack channel" (status 'churned' or `churn_flag` true on any row with that name;
   24 names). Prod now: 33 of 97 accounts have no channel (32 active, 1 not started).
+
+Drawers and 7 days, 9 Oct 15:30 IST (prod, app version 138):
+- Coverage card: clicking "33 of 97 accounts…" or "View all accounts ›" opens a drawer with every non-churned account (channels,
+  messages in 30 days, last message; no channel first). "89 of 188 channels…" / "View all channels ›" opens one with every mapped
+  channel of a non-churned account. Channels of churned accounts are now left out of the channel count too (197 -> 188).
+- Slack engagement has its own `Past 30 days | Past 7 days` toggle (`var_fuewin`). 7 days bands by days with work (3+ engaged, 1-2 low,
+  none zero); the score writes assigned_7d, days_7d, daily_7d, open_7d, done_7d, recent_7d, band_7d; the page data returns `eng` and `eng7`.

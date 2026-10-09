@@ -18,21 +18,31 @@ def withCh = [] as Set; def chans = [:]
 L('ch').each { r -> def p = r.properties ?: [:]; def cid = S(p.channel_id)
   def aid = [S(p.acc_id), S(p.account_id)].find { ids.contains(it) } ?: byName[S(p.account_name).toLowerCase()]
   if (aid) withCh << aid
-  if (cid && !chans.containsKey(cid)) chans[cid] = [channel: S(p.channel_name) ?: cid, account: S(p.account_name) ?: (aid ? nameOf[aid] : '')] }
-def seen = [] as Set
-L('conv').each { r -> def p = r.properties ?: [:]; def t = null; try { t = Instant.parse(S(p.message_datetime)) } catch (e) { }; if (t != null && t.isAfter(since)) seen << S(p.channel_id) }
-// accounts are matched by name too: account_db holds some accounts twice, and a channel on either copy covers the account
-def withName = acc.findAll { withCh.contains(it.id) }.collect { S(it.p.account_name).toLowerCase() } as Set
-// churned accounts are left out: status 'churned' or churn_flag set on any row with that name
+  if (cid && !chans.containsKey(cid)) chans[cid] = [channel: S(p.channel_name) ?: cid, account: aid ? nameOf[aid] : S(p.account_name)] }
+// messages fetched per channel in the past 30 days, and the latest one
+def msgs = [:].withDefault { 0 }; def last = [:]
+L('conv').each { r -> def p = r.properties ?: [:]; def t = null; try { t = Instant.parse(S(p.message_datetime)) } catch (e) { }
+  if (t != null && t.isAfter(since)) { def c = S(p.channel_id); msgs[c] = msgs[c] + 1; if (S(p.message_datetime) > S(last[c])) last[c] = S(p.message_datetime) } }
+// churned accounts are left out: status 'churned' or churn_flag set on any row with that name (account_db holds some accounts twice)
 def isChurn = { Map p -> S(p.status).toLowerCase() == 'churned' || S(p.churn_flag).toLowerCase() in ['true', 'yes', '1'] }
 def churned = acc.findAll { isChurn(it.p) }.collect { S(it.p.account_name).toLowerCase() } as Set
 def live = acc.findAll { !churned.contains(S(it.p.account_name).toLowerCase()) }.unique { S(it.p.account_name).toLowerCase() }
-def noCh = live.findAll { !withName.contains(S(it.p.account_name).toLowerCase()) }.collect { [name: S(it.p.account_name), status: S(it.p.status)] }
-  .sort { a, b -> (a.status <=> b.status) ?: (a.name.toLowerCase() <=> b.name.toLowerCase()) }
-def quiet = chans.findAll { k, v -> !seen.contains(k) }.collect { k, v -> v }.sort { a, b -> (a.account.toLowerCase() <=> b.account.toLowerCase()) ?: (a.channel <=> b.channel) }
-def cov = [accounts: live.size(), accounts_with: live.size() - noCh.size(), churned_left_out: churned.size(), no_channel: noCh, channels: chans.size(), quiet: quiet, updated_at: now]
+// channels of churned accounts are left out too; channels with no account stay
+def chList = chans.findAll { k, v -> !churned.contains(S(v.account).toLowerCase()) }.collect { k, v -> [channel: v.channel, account: S(v.account), msgs: msgs.containsKey(k) ? msgs[k] : 0, last: S(last[k])] }
+  .sort { a, b -> ((a.msgs > 0 ? 1 : 0) <=> (b.msgs > 0 ? 1 : 0)) ?: (a.account.toLowerCase() <=> b.account.toLowerCase()) ?: (a.channel <=> b.channel) }
+def chByAcc = [:].withDefault { [] as LinkedHashSet }
+chans.each { k, v -> if (S(v.account)) chByAcc[S(v.account).toLowerCase()] << k }
+// accounts are matched by name, so a channel on either copy of a duplicated account covers it
+def accList = live.collect { a -> def nm = S(a.p.account_name); def cs = (chByAcc.containsKey(nm.toLowerCase()) ? chByAcc[nm.toLowerCase()] : []) as List
+  [name: nm, status: S(a.p.status), channels: cs.collect { chans[it].channel }.join(', '), n_ch: cs.size(), msgs: cs.sum { msgs.containsKey(it) ? msgs[it] : 0 } ?: 0,
+   last: cs.collect { S(last[it]) }.max() ?: ''] }
+  .sort { a, b -> ((a.n_ch > 0 ? 1 : 0) <=> (b.n_ch > 0 ? 1 : 0)) ?: ((a.msgs > 0 ? 1 : 0) <=> (b.msgs > 0 ? 1 : 0)) ?: (a.name.toLowerCase() <=> b.name.toLowerCase()) }
+def noCh = accList.findAll { it.n_ch == 0 }.collect { [name: it.name, status: it.status] }.sort { a, b -> (a.status <=> b.status) ?: (a.name.toLowerCase() <=> b.name.toLowerCase()) }
+def quiet = chList.findAll { it.msgs == 0 }.collect { [channel: it.channel, account: it.account] }
+def cov = [accounts: live.size(), accounts_with: live.size() - noCh.size(), churned_left_out: churned.size(), no_channel: noCh, channels: chList.size(), quiet: quiet,
+           acc_list: accList, ch_list: chList, updated_at: now]
 return [row: [email: '__coverage__', band: '__coverage__', name: 'Slack coverage', recent_work: JsonOutput.toJson(cov), updated_at: now],
-        summary: [no_channel: noCh.size(), channels: chans.size(), quiet: quiet.size()]]
+        summary: [accounts: live.size(), no_channel: noCh.size(), channels: chList.size(), quiet: quiet.size()]]
 """
 
 def wf(cron):

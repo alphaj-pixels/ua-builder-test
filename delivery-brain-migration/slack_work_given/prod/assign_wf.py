@@ -13,7 +13,8 @@ OBJ = {"db_slack_assignments": ("Work given to FDSEs in Slack (found by the Slac
     "message_datetime": F("string"), "message_ts": F("string"), "person_email": F("string"), "person_name": F("string"), "task": {"type": "string"}, "status": F("string"),
     "due": F("string"), "kind": F("string"), "evidence": {"type": "string"}, "slack_link": {"type": "string"}, "task_id": F("string"), "created_at": F("integer", **EPOCH)})}
 ENG_FIELDS = {"assigned_30d": F("integer"), "assigned_w1": F("integer"), "assigned_w2": F("integer"), "assigned_w3": F("integer"), "assigned_w4": F("integer"),
-              "weeks_assigned": F("integer"), "open_n": F("integer"), "done_n": F("integer"), "recent_work": {"type": "string"}, "last_assigned_at": F("integer", **EPOCH)}
+              "weeks_assigned": F("integer"), "open_n": F("integer"), "done_n": F("integer"), "recent_work": {"type": "string"}, "last_assigned_at": F("integer", **EPOCH),
+              "assigned_7d": F("integer"), "days_7d": F("integer"), "daily_7d": F("string"), "open_7d": F("integer"), "done_7d": F("integer"), "recent_7d": {"type": "string"}, "band_7d": F("string")}
 
 def ensure_objects():
     SE.OBJECTS.update(OBJ); SE.OBJECTS.pop('db_slack_channel_activity', None)
@@ -267,7 +268,7 @@ def umKids = umMgr.groupBy { k, v -> v }.collectEntries { k, v -> [k, v.keySet()
 def tree = ['sumeet@unifyapps.com'] as Set; def stk = ['sumeet@unifyapps.com']
 while (stk) { def x = stk.pop(); (umKids[x] ?: []).each { c -> if (tree.add(c)) stk << c } }
 def people = UMP.findAll { tree.contains(S(it.emp_email).toLowerCase()) }.collectEntries { [S(it.emp_email).toLowerCase(), it] }   // everyone in Sumeet Nandal's tree, all roles
-def writes = []; def cnt = [:].withDefault { 0 }; int total = 0
+def writes = []; def cnt = [:].withDefault { 0 }; int total = 0; def cnt7 = [:].withDefault { 0 }; int total7 = 0; def since7 = nowI.minusSeconds(7L * 86400L)
 people.each { email, u ->
   def all = items[email]
   // one piece of work per Slack conversation + task text; a CXO Slack task on the same message as a Slack assignment is the same work
@@ -281,14 +282,21 @@ people.each { email, u ->
   cnt[band]++
   def accs = its.countBy { it.account }.sort { -it.value }.keySet().findAll { it }.toList()
   def recent = its.sort { a, b -> b.t <=> a.t }.take(3).collect { def d = it.t.atZone(ZONE).toLocalDate(); it.task + ' (' + it.account + ', ' + d.dayOfMonth + ' ' + MON[d.monthValue] + ')' }
+  // past 7 days: work per day (oldest first), days with work, band by days (3+ days engaged, 1-2 low, none zero)
+  def it7 = its.findAll { !it.t.isBefore(since7) }
+  def dd = [0] * 7; it7.each { int age = (int) ((nowI.epochSecond - it.t.epochSecond) / 86400); dd[6 - Math.min(6, Math.max(0, age))]++ }
+  int days7 = dd.count { it > 0 }; def band7 = it7.isEmpty() ? 'Zero' : (days7 >= 3 ? 'Engaged' : 'Low'); cnt7[band7]++; total7 += it7.size()
+  def recent7 = it7.sort(false) { a, b -> b.t <=> a.t }.take(3).collect { def d = it.t.atZone(ZONE).toLocalDate(); it.task + ' (' + it.account + ', ' + d.dayOfMonth + ' ' + MON[d.monthValue] + ')' }
   def p = new LinkedHashMap(E[email] ?: [:])
   p.putAll([email: email, name: S(u.emp_name), role: S(u.role), manager_email: S(u.manager_email).toLowerCase(),
             assigned_30d: its.size(), assigned_w1: w[0], assigned_w2: w[1], assigned_w3: w[2], assigned_w4: w[3], weeks_assigned: weeks,
             open_n: its.count { !it.done }, done_n: its.count { it.done }, accounts: accs.take(6).join(', '), accounts_n: accs.size(),
-            recent_work: recent.join(' · '), last_assigned_at: its ? its.collect { it.t.toEpochMilli() }.max() : null, band: band, updated_at: now])
+            recent_work: recent.join(' · '), last_assigned_at: its ? its.collect { it.t.toEpochMilli() }.max() : null, band: band, updated_at: now,
+            assigned_7d: it7.size(), days_7d: days7, daily_7d: dd.join(','), open_7d: it7.count { !it.done }, done_7d: it7.count { it.done }, recent_7d: recent7.join(' · '), band_7d: band7])
   writes << [id: email, payload: p] }
 def summary = [fdse: people.size(), engaged: cnt['Engaged'], low: cnt['Low'], zero: cnt['Zero'], assignments: total, conversations_read: read,
-               conversations_pending: prog ? S(prog.task) : '', source: 'task_tracker', from_slack_asg: bySrc['asg'], from_slack_cxo: bySrc['cxo'], from_tracker: bySrc['tracker']]
+               conversations_pending: prog ? S(prog.task) : '', source: 'task_tracker', from_slack_asg: bySrc['asg'], from_slack_cxo: bySrc['cxo'], from_tracker: bySrc['tracker'],
+               engaged7: cnt7['Engaged'], low7: cnt7['Low'], zero7: cnt7['Zero'], assignments7: total7]
 writes << [id: '__summary__', payload: [email: '__summary__', band: '__summary__', name: JsonOutput.toJson(summary), updated_at: now]]
 return [writes: writes, summary: summary]
 """
