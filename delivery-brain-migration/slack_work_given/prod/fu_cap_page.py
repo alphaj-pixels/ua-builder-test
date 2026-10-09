@@ -13,7 +13,7 @@ import fu_page as FU
 LOAD_DEFAULT = "grid" if "--grid" in __import__("sys").argv else "scatter"
 WIN_DEFAULT = "30" if "--month" in __import__("sys").argv else "7"
 V_MGR, V_TAB, V_CELL, V_LIM, V_LOAD, V_WIN = FU.V_MGR, "var_futab", "var_fucell", "var_fulim", "var_fuload", "var_fuwin"
-V_MODE, V_ETAB, V_ELIM = "var_fumode", "var_fuetab", "var_fuelim"   # load (Past 30 days / This week / Next 30 days) or slack (Slack engagement); engagement tab and list limit
+V_MODE, V_ETAB, V_ELIM = "var_fumode", "var_fuetab", "var_fuelim"   # load (Past 30 days / Past 7 days / This week / Next 30 days) or slack (Slack engagement); engagement tab and list limit
 MODE_DEFAULT = "slack" if "--slack" in __import__("sys").argv else "load"
 MODE = "(" + V_MODE + "['value'] || 'load')"
 CAP = "font-size:12px !important; letter-spacing:.12em; text-transform:uppercase; color:var(--fu-muted) !important;"
@@ -65,7 +65,7 @@ def build(pg, ds, eds):
     t(cb, "›", css=MUTE, visible=show(it(cr, "last"), "no"))
     WINX = "(" + V_WIN + "['value'] || '7')"
     pc_ = box(trr, "gap:0; border:1px solid var(--fu-line); border-radius:999px; background:var(--fu-hover); padding:3px;", direction="row", name="period_toggle")
-    for key, lab in (("slack", "Slack engagement"), ("past30", "Past 30 days"), ("7", "This week"), ("30", "Next 30 days")):   # Slack engagement = work given per week; the others = utilisation over the window
+    for key, lab in (("slack", "Slack engagement"), ("past30", "Past 30 days"), ("past7", "Past 7 days"), ("7", "This week"), ("30", "Next 30 days")):   # Slack engagement = work given per week; the others = utilisation over the window
         on = (MODE + " === 'slack'") if key == "slack" else ("(" + MODE + " === 'load' && " + WINX + " === '" + key + "')")
         b = box(pc_, "padding:4px 14px; border-radius:999px; cursor:pointer;", {"data-fu-on": "{{ " + on + " ? 'yes' : 'no' }}"}, name="period_" + key)
         t(b, lab, css="white-space:nowrap;")
@@ -95,7 +95,7 @@ def build(pg, ds, eds):
     for key, lab in (("scatter", "Scatter"), ("grid", "Grid")):
         b = box(tg, "padding:4px 14px; border-radius:999px; cursor:pointer;", {"data-fu-on": "{{ " + LOAD + " === '" + key + "' ? 'yes' : 'no' }}"}, name="load_" + key)
         t(b, lab, css="white-space:nowrap;"); pg.blocks[b]["events"] = [setv(V_LOAD, key, "fuload" + key)]
-    t(gc, "{{ " + LOAD + " === 'grid' ? 'Each cell counts people. Across: utilisation ' + ((var_fuwin['value'] || '7') === 'past30' ? 'over the past 30 days' : ((var_fuwin['value'] || '7') === '30' ? 'over the next 30 days' : 'this week')) + '. Down: overdue tasks. Click a cell to list those people below.' : 'Each dot is one person. Across: utilisation ' + ((var_fuwin['value'] || '7') === 'past30' ? 'over the past 30 days' : ((var_fuwin['value'] || '7') === '30' ? 'over the next 30 days' : 'this week')) + '. Up: overdue tasks. People with no tasks sit in the left lane. Hover a dot for the name; click it to open their tasks.' }}", css=MUTE)
+    t(gc, "{{ " + LOAD + " === 'grid' ? 'Each cell counts people. Across: utilisation ' + ((var_fuwin['value'] || '7') === 'past30' ? 'over the past 30 days' : ((var_fuwin['value'] || '7') === 'past7' ? 'over the past 7 days' : ((var_fuwin['value'] || '7') === '30' ? 'over the next 30 days' : 'this week'))) + '. Down: overdue tasks. Click a cell to list those people below.' : 'Each dot is one person. Across: utilisation ' + ((var_fuwin['value'] || '7') === 'past30' ? 'over the past 30 days' : ((var_fuwin['value'] || '7') === 'past7' ? 'over the past 7 days' : ((var_fuwin['value'] || '7') === '30' ? 'over the next 30 days' : 'this week'))) + '. Up: overdue tasks. People with no tasks sit in the left lane. Hover a dot for the name; click it to open their tasks.' }}", css=MUTE)
     lg = pg.repeat(gc, D("grid_cols"), "legend", gap="gap-lg")
     pg.blocks[lg]["component"]["appearance"].update({"layout": "list", "direction": "horizontal"})
     li = box(lg, "gap:6px; align-items:center; width:auto !important;", direction="row")
@@ -133,7 +133,7 @@ def build(pg, ds, eds):
         t(xax, lab, css=MUTE + f" position:absolute; left:{xv}%; transform:translateX(-50%); white-space:nowrap;")
     axl = box(sv, f"gap:0; margin-left:{LANE_W + YAX_W + 24}px; justify-content:space-between;", direction="row")
     t(axl, "↑ Overdue tasks", css=MUTE)
-    t(axl, "{{ 'Utilisation ' + ((var_fuwin['value'] || '7') === 'past30' ? 'over the past 30 days' : ((var_fuwin['value'] || '7') === '30' ? 'over the next 30 days' : 'this week')) + ' →' }}", css=MUTE)
+    t(axl, "{{ 'Utilisation ' + ((var_fuwin['value'] || '7') === 'past30' ? 'over the past 30 days' : ((var_fuwin['value'] || '7') === 'past7' ? 'over the past 7 days' : ((var_fuwin['value'] || '7') === '30' ? 'over the next 30 days' : 'this week'))) + ' →' }}", css=MUTE)
 
     # grid view
     gv = box(gc, "gap:8px;", name="grid_view", visible=show("{{ " + LOAD + " === 'grid' ? 'yes' : 'no' }}"))
@@ -218,8 +218,8 @@ def build(pg, ds, eds):
 
     # ---------------- notes
     nt = box(body, "gap:4px; max-width:90ch; padding:0 4px;", name="notes")
-    for line in ("Utilisation is the load landing in the window against capacity for the window: this week uses 7 days and weekly capacity (60 story points unless set); next 30 days uses 30 days and 30/7 of weekly capacity, with tasks due inside 30 days counting in full; past 30 days counts every task assigned to the person in the last 30 days, done or not (Slack tasks dated by the Slack message, others by the day they were added to the tracker), against 30/7 of weekly capacity. Each task counts its story points (1 when blank), weighted by timing (overdue ×1.25) and status (waiting ×0.5). Owners split a task; reviewers share 20%.",
-                 "Under-used is below 60%, medium 60 to 69%, optimal 70 to 99%, overloaded 100% or more. No tasks means nothing open is assigned to the person in Task Management for the window (for past 30 days: no task was assigned to them in the last 30 days); those people are kept apart because it usually means work isn't logged.",
+    for line in ("Utilisation is the load landing in the window against capacity for the window: this week uses 7 days and weekly capacity (60 story points unless set); next 30 days uses 30 days and 30/7 of weekly capacity, with tasks due inside 30 days counting in full; past 30 days and past 7 days count every task assigned to the person in that many days, done or not (Slack tasks dated by the Slack message, others by the day they were added to the tracker), against 30/7 of weekly capacity or one week's capacity. Each task counts its story points (1 when blank), weighted by timing (overdue ×1.25) and status (waiting ×0.5). Owners split a task; reviewers share 20%.",
+                 "Under-used is below 60%, medium 60 to 69%, optimal 70 to 99%, overloaded 100% or more. No tasks means nothing open is assigned to the person in Task Management for the window (for past 30 days and past 7 days: no task was assigned to them in that window); those people are kept apart because it usually means work isn't logged.",
                  "Status is the share of a team's people with tasks who are under-used or overloaded: red at 30% or more, amber 20 to 29%, green below 20%. Data quality is the share of the team's open tasks with story points and a due date: green at 80% or more, amber 60 to 79%, red below 60%.",
                  "There is no look-back view: task records carry no completion dates and scores aren't stored over time, so the last 30 days can't be rebuilt. Very few open tasks have a future due date, which is why the next-30-days view runs low."):
         t(nt, line, css=MUTE + " line-height:1.6;")

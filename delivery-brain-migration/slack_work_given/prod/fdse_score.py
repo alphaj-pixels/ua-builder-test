@@ -22,9 +22,11 @@ SCORE = r"""
 def ZONE = java.time.ZoneId.of('Asia/Kolkata')
 def today = java.time.LocalDate.now(ZONE)
 def S = { v -> v == null ? '' : v.toString().trim() }
-def PAST = binding.hasVariable('window_days') && S(binding.getVariable('window_days')).toLowerCase() == 'past30'   // past 30 days: tasks assigned to the person in the last 30 days
-def WIN = PAST ? 30.0 : (binding.hasVariable('window_days') && S(binding.getVariable('window_days')) ==~ /\d+/) ? new BigDecimal(S(binding.getVariable('window_days'))) : 7.0   // scoring window in days (7 = the week-based score)
-def START = today.minusDays(29)   // past 30 days = today and the 29 days before
+def PWIN = binding.hasVariable('window_days') ? (S(binding.getVariable('window_days')).toLowerCase() =~ /^past(\d+)$/) : null
+def PDAYS = (PWIN && PWIN.matches()) ? (PWIN.group(1) as int) : 0   // past7 / past30: tasks assigned to the person in the last 7 or 30 days
+def PAST = PDAYS > 0
+def WIN = PAST ? new BigDecimal(PDAYS) : (binding.hasVariable('window_days') && S(binding.getVariable('window_days')) ==~ /\d+/) ? new BigDecimal(S(binding.getVariable('window_days'))) : 7.0   // scoring window in days (7 = the week-based score)
+def START = today.minusDays(Math.max(PDAYS, 1) - 1)   // past N days = today and the N-1 days before
 // when a task was assigned: the Slack message date for tasks from Slack, otherwise the day it was added to the tracker
 def givenOf = { r, t ->
   def m = (S(t.slack_link) =~ /\/p(\d{10})\d{6}/); if (m.find()) return java.time.Instant.ofEpochSecond(m.group(1) as long).atZone(ZONE).toLocalDate()
@@ -54,7 +56,7 @@ def mails = { list, single -> def xs = (list instanceof List ? list : (S(list) ?
   if (!xs) { def m = S(single).toLowerCase(); if (m && m != '-' && m.contains('@')) xs = [m] }
   xs.unique() }
 def stats = [:].withDefault { [owned: 0.0, reviewer: 0.0, thisWeek: 0, waiting: 0, notStarted: 0, active: 0, overdue: 0, completed: 0, total: 0] }
-// past 30 days: a Slack CXO task on the same Slack message as a Slack assignment for the same person is the same work, counted once
+// past N days: a Slack CXO task on the same Slack message as a Slack assignment for the same person is the same work, counted once
 def asgOwners = [:].withDefault { [] as Set }
 if (PAST) L('tasks').each { r -> def t = r.properties ?: [:]; def k = linkOf(t); if (S(t.created_from) == 'Slack assignment' && k) asgOwners[k].addAll(mails(t.Owners_List, t.ownerMail)) }
 L('tasks').each { r ->
@@ -68,7 +70,7 @@ L('tasks').each { r ->
   def eta = etaOf(t.eta); def days = eta != null ? java.time.temporal.ChronoUnit.DAYS.between(today, eta) : null
   owners.each { o -> def s = stats[o]; s.total++; if (cls == 'completed') s.completed++ else { s[cls == 'waiting' ? 'waiting' : (cls == 'notStarted' ? 'notStarted' : 'active')]++; if (days != null && days < 0) s.overdue++ } }
   if (cls == 'completed' && !PAST) return
-  // forward: weighted by when it lands; past 30 days: every task assigned in the window counts in full, done ones included (waiting ×0.5)
+  // forward: weighted by when it lands; past N days: every task assigned in the window counts in full, done ones included (waiting ×0.5)
   def share = PAST ? 1.0 : (days == null ? 1.0 : (days < 0 ? 1.25 : (days <= WIN ? 1.0 : WIN / days)))
   def load = pointsOf(t.taskStoryPoints) * share * (PAST ? (cls == 'waiting' ? 0.5 : 1.0) : WEIGHT[cls])
   owners.each { o -> stats[o].owned += load / owners.size(); stats[o].thisWeek++ }

@@ -130,10 +130,11 @@ def tier = [admin: isAdmin ? 'yes' : 'no', heat: heatRows, heat_n: heatRows.size
 def fmtDay = { d -> d.format(java.time.format.DateTimeFormatter.ofPattern('d MMM')) }
 def isM = (WIN as int) == 30
 def isP = PAST
-def PER = isP ? 'Over the past 30 days' : (isM ? 'Over the next 30 days' : 'This week')
+def PD = 'past ' + PDAYS + ' days'
+def PER = isP ? 'Over the ' + PD : (isM ? 'Over the next 30 days' : 'This week')
 // ---------------- delivery capacity view (layout from the Delivery capacity reference, adapted to this week's data)
 def fwdPts = [:].withDefault { 0.0 }; def openN = [:].withDefault { 0 }; def goodN = [:].withDefault { 0 }; def noEtaN = [:].withDefault { 0 }; def acctN = [:].withDefault { [:].withDefault { 0 } }
-L('tasks').each { r -> def t = r.properties ?: [:]; def cls = classOf(t.status); if (PAST ? !inPast(r, t) : cls == 'completed') return   // past 30 days: every task assigned in the window
+L('tasks').each { r -> def t = r.properties ?: [:]; def cls = classOf(t.status); if (PAST ? !inPast(r, t) : cls == 'completed') return   // past N days: every task assigned in the window
   def owners = mails(t.Owners_List, t.ownerMail); if (!owners) return
   def eta = etaOf(t.eta); def days = eta != null ? java.time.temporal.ChronoUnit.DAYS.between(today, eta) : null
   def sp = 0.0; try { sp = S(t.taskStoryPoints) ? S(t.taskStoryPoints).toBigDecimal() : 0.0 } catch (e) { sp = 0.0 }
@@ -217,13 +218,13 @@ def scatter = everyoneC.collect { p -> def pv = (p.pct as BigDecimal) as double;
    tip: "${p.name} · ${p.util_s} · ${od} overdue · ${p.leader}".toString()] }
 def NT = YMAX % 4 == 0 ? 4 : (YMAX % 3 == 0 ? 3 : 5)
 def yTicks = (0..NT).collect { k -> [id: 'y' + k, v: (k == NT ? "${YMAX}+" : "${(YMAX * k / NT) as int}").toString(), pos: (Math.round(k * 100.0 / NT) as int).toString()] }
-def cap = [asof: (isP ? "FDSE utilisation, past 30 days ${fmtDay(START)} to ${fmtDay(today)}. ${NC} people in ${focusName}'s team." : "FDSE utilisation, ${isM ? 'next 30 days' : 'week of'} ${fmtDay(today)} to ${fmtDay(today.plusDays((WIN as int) - 1))}. ${NC} people in ${focusName}'s team.").toString(),
-  label: "${isP ? 'Past 30 days' : (isM ? 'Next 30 days' : 'This week')} · ${focusName}'s team".toString(), lead: lead, period: isP ? 'past30' : (isM ? '30' : '7'),
-  money: "${String.format('%,d', Math.round(spareC as double))} story points of capacity unused ${isP ? 'over the past 30 days' : (isM ? 'over the next 30 days' : 'this week')} across the ${withT} people with tasks, at 60 points per person per week unless a capacity is set${isM ? ', so about 257 points each over 30 days' : ''}.".toString(),
-  horizon_note: isP ? 'Every task assigned to the person in the past 30 days counts, done or not: tasks from Slack are dated by the Slack message, the rest by the day they were added to the task tracker. Each counts its story points (1 when blank), waiting tasks half. Overdue means still open and past its due date.'
-    : (isM ? 'Only work already assigned counts. New work that arrives during the month is not known yet, so 30-day figures run low; read them as how much of the month is already spoken for.' : ''), has_horizon: isM ? 'yes' : 'no',
-  rest: rest, conf: (isP ? "${pctS(qAll)} of the ${openAll} tasks assigned in this team in the past 30 days have story points; the rest count as 1 point." : "${pctS(qAll)} of open tasks in this team have story points and a due date; ${noEtaAll} have no due date at all.").toString(), conf_tone: openAll ? qualOf(qAll) : 'X',
-  caution: lowQ ? ("Treat the figures for " + (lowQ.size() == 1 ? lowQ[0] : (lowQ.size() <= 3 ? lowQ.take(lowQ.size() - 1).join(', ') + ' and ' + lowQ[-1] : lowQ.take(3).join(', ') + " and ${lowQ.size() - 3} other teams")) + " with caution: under 60% of their team's ${isP ? 'tasks from the past 30 days' : 'open tasks'} are estimated.").toString() : '',
+def cap = [asof: (isP ? "FDSE utilisation, ${PD} ${fmtDay(START)} to ${fmtDay(today)}. ${NC} people in ${focusName}'s team." : "FDSE utilisation, ${isM ? 'next 30 days' : 'week of'} ${fmtDay(today)} to ${fmtDay(today.plusDays((WIN as int) - 1))}. ${NC} people in ${focusName}'s team.").toString(),
+  label: "${isP ? 'Past ' + PDAYS + ' days' : (isM ? 'Next 30 days' : 'This week')} · ${focusName}'s team".toString(), lead: lead, period: isP ? 'past' + PDAYS : (isM ? '30' : '7'),
+  money: "${String.format('%,d', Math.round(spareC as double))} story points of capacity unused ${isP ? 'over the ' + PD : (isM ? 'over the next 30 days' : 'this week')} across the ${withT} people with tasks, at 60 points per person per week unless a capacity is set${isM ? ', so about 257 points each over 30 days' : ''}.".toString(),
+  horizon_note: isP ? 'Every task assigned to the person in the ' + PD + ' counts, done or not: tasks from Slack are dated by the Slack message, the rest by the day they were added to the task tracker. Each counts its story points (1 when blank), waiting tasks half. Overdue means still open and past its due date.'
+    : (isM ? 'Only work already assigned counts. New work that arrives during the month is not known yet, so 30-day figures run low; read them as how much of the month is already spoken for.' : ''), has_horizon: (isP || isM) ? 'yes' : 'no',
+  rest: rest, conf: (isP ? "${pctS(qAll)} of the ${openAll} tasks assigned in this team in the ${PD} have story points; the rest count as 1 point." : "${pctS(qAll)} of open tasks in this team have story points and a due date; ${noEtaAll} have no due date at all.").toString(), conf_tone: openAll ? qualOf(qAll) : 'X',
+  caution: lowQ ? ("Treat the figures for " + (lowQ.size() == 1 ? lowQ[0] : (lowQ.size() <= 3 ? lowQ.take(lowQ.size() - 1).join(', ') + ' and ' + lowQ[-1] : lowQ.take(3).join(', ') + " and ${lowQ.size() - 3} other teams")) + " with caution: under 60% of their team's ${isP ? 'tasks from the ' + PD : 'open tasks'} are estimated.").toString() : '',
   has_caution: lowQ ? 'yes' : 'no', total: NC.toString(),
   grid: grid, grid_cols: gridCols,
   tabs: KEYS.collect { k -> [id: k, l: BL[k], n: everyoneC.count { it.band_key == k }.toString(), tone: BT[k]] },

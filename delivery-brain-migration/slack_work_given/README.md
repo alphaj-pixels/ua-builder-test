@@ -47,3 +47,7 @@ To show everyone again, start the scope walk from `SCOPE_ROOT` instead of `SCOPE
 Access, 9 Oct 14:00 IST (prod): Dana Sabbagh (`dana.sabbagh@partner.unifyapps.com`) and Jay Shah (`jay.shah@unifyapps.com`) added
 to Sumeet, Alpha and Naman (`DUO` in `fu_page.py`: page gates, the nav card and the data sources' full-team `admin` flag). App
 published (version 135). UAT's list is unchanged (Sumeet and Alpha).
+
+Past 7 days, 9 Oct 14:20 IST: a fifth button, `Slack engagement | Past 30 days | Past 7 days | This week | Next 30 days`.
+`fdse_score.py` now takes any `window_days=pastN` (past7, past30): tasks assigned in the last N days against N/7 of weekly capacity.
+Prod (Shivam's and Sandeep's teams): 421 of 569 people were assigned no tasks in the past 7 days. App published (version 136).
