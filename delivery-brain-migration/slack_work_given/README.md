@@ -71,3 +71,5 @@ Drawers and 7 days, 9 Oct 15:30 IST (prod, app version 138):
   channel of a non-churned account. Channels of churned accounts are now left out of the channel count too (197 -> 188).
 - Slack engagement has its own `Past 30 days | Past 7 days` toggle (`var_fuewin`). 7 days bands by days with work (3+ engaged, 1-2 low,
   none zero); the score writes assigned_7d, days_7d, daily_7d, open_7d, done_7d, recent_7d, band_7d; the page data returns `eng` and `eng7`.
+- Drawers rebuilt in the format of the working drawers on the account-detail page (fixed type, full height, backdrop, one body slot
+  `wrappedInLayout`, open/close actions without `method`), opened by "View all 97 accounts" / "View all 188 channels" buttons.

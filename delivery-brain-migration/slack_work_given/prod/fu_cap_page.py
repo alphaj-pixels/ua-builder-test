@@ -269,20 +269,25 @@ def build_cov(pg, eds, main, grid, chead):
     for hb, d_, eid in ((ah, da, "fucovacc"), (bh, dc, "fucovch")):
         pg.blocks[hb]["events"] = [drawer_ev(d_, "show", eid)]
         pg.blocks[hb]["additional"]["customCSS"] = pg.blocks[hb]["additional"]["customCSS"].replace("gap:8px;", "gap:8px; cursor:pointer;")
-    va = t(a, "View all accounts ›", css=LINK); pg.blocks[va]["events"] = [drawer_ev(da, "show", "fucovacc2")]
-    vc = t(b, "View all channels ›", css=LINK); pg.blocks[vc]["events"] = [drawer_ev(dc, "show", "fucovch2")]
+    for parent, label, d_, eid in ((a, E("'View all ' + ($V?.['accounts'] || '') + ' accounts'"), da, "fucovacc2"), (b, E("'View all ' + ($V?.['channels'] || '') + ' channels'"), dc, "fucovch2")):
+        bt = pg.add(parent, "Button", {"color": "brand", "size": "sm", "variant": "outline", "styles": {"width": "w-fit"}}, {"contentMode": "text", "value": label, "type": "default"}, "margin-top:6px;", None)
+        pg.blocks[bt]["component"]["slots"] = {}; pg.blocks[bt]["events"] = [drawer_ev(d_, "show", eid)]
     return cc
 
-def drawer_ev(did, op, eid):
-    return {"id": "evt_" + eid, "eventType": "onClick", "action": {"id": "act_" + eid, "actionType": "controlDrawer", "payload": {"drawerId": did, "method": "trigger", "operation": op}}}
+def drawer_ev(did, op, eid):   # same shape as the working drawers on the account-detail page
+    return {"id": "evt_" + eid, "eventType": "onClick", "action": {"id": "act_" + eid, "actionType": "controlDrawer", "executionType": "delay",
+            "payload": {"drawerId": did, "operation": op}, "onSuccessActions": []}}
 
 def cov_drawer(pg, grid, CV, name, title, sub_key, rows_key, cols, keys):
     """A right-hand drawer with a table of the coverage rows; the first column carries the row's tone dot."""
     t = pg.text
-    d = pg.add("root_id", "Drawer", {"styles": {}, "position": "right", "defaultWidth": {"custom": "760px"}}, {"variant": "card", "allowResize": True}, None, name)
-    hd = pg.stack(d, "row", "gap:12px; align-items:center; justify-content:space-between; width:100%;", name + "_head")
-    bd = pg.stack(d, "column", "gap:0; width:100%; padding:0 0 24px;", name + "_body")
-    pg.blocks[d]["component"]["slots"] = {"header": {"blockId": hd}, "body": {"blockId": bd}}
+    d = pg.add("root_id", "Drawer", {"position": "right", "defaultHeight": "h-full", "defaultWidth": {"custom": "50%"}, "type": "fixed", "styles": {},
+                                     "backdrop": {"showBackdrop": True, "backdropStyles": {"backgroundColor": "var(--palette-alpha-white-05)", "blurRadius": 8}}},
+               {"variant": "card", "hideOnClickOutside": True, "allowResize": True}, None, name)
+    bd = pg.stack(d, "column", "gap:0; padding:0 0 24px;", name + "_body")
+    pg.blocks[bd]["component"]["appearance"]["styles"].update({"height": "h-full", "width": "w-full"})
+    pg.blocks[d]["component"]["slots"] = {"body": {"blockId": bd, "wrappedInLayout": True}}
+    hd = pg.stack(bd, "row", "gap:12px; align-items:center; justify-content:space-between; width:100%; margin-bottom:4px;", name + "_head")
     t(hd, title, "text-md", "semi-bold")
     cl = t(hd, "Close ✕", css="color:var(--fu-link) !important; cursor:pointer; white-space:nowrap;"); pg.blocks[cl]["events"] = [drawer_ev(d, "hide", name + "x")]
     t(bd, "{{ " + CV + "?.['" + sub_key + "'] || '' }}", "text-sm", css=MUTE + " margin-bottom:12px !important;")
