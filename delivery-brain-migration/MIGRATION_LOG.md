@@ -183,6 +183,8 @@ published on 1 Oct 09:14Z by 24369 (an import: ~80 workflows saved at that minut
   daily report, health for all 100 accounts, Risk Theme + Composer, new current Account 360 row.
 - Nightly: DB | Daily Account Report deployed (23:00 IST); tonight's run replaces the copied rows with prod-computed ones.
   Still not deployed: DB | Attention Accounts to Slack (needs prod's Slack connection), sync-Atlas-projects-and-issues.
+  Decision 2026-10-09: leave DB | Attention Accounts to Slack off. It stays saved, undeployed, on UAT's connection; no
+  23:15 IST post from prod until a prod Slack connection is chosen.
 - Pages: Account Detail (1219 -> 2053 blocks; the Account Health tab is replaced by Account overview / Account 360 / Weekly 360)
   with 36 data sources updated and 9 created; CXO_dashboard (502 -> 513 blocks, attention card) with its card's data source.
   Prod's "task management use cases" source on CXO_dashboard kept. Checked after publishing: Account overview, Account 360,
