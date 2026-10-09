@@ -43,3 +43,7 @@ Scope for now, 9 Oct 13:50 IST: every view shows only Shivam Satrawal's (`shivam
 (`sandeep.sharma@unifyapps.com`) teams under Sumeet Nandal (`SCOPE_TEAMS` in `fdse_page_wf.py` and `slack_eng_page.py`); the other
 direct reports' teams (Aman Agarwal, Sudhir Yadav, Rahul Sethi, Yatendra Singh, Kuntal Beniwal) are hidden. No records were changed.
 To show everyone again, start the scope walk from `SCOPE_ROOT` instead of `SCOPE_TEAMS` and redeploy both data workflows.
+
+Access, 9 Oct 14:00 IST (prod): Dana Sabbagh (`dana.sabbagh@partner.unifyapps.com`) and Jay Shah (`jay.shah@unifyapps.com`) added
+to Sumeet, Alpha and Naman (`DUO` in `fu_page.py`: page gates, the nav card and the data sources' full-team `admin` flag). App
+published (version 135). UAT's list is unchanged (Sumeet and Alpha).
