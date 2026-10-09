@@ -333,7 +333,8 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
 - Tested in UAT with real scheduled runs (test runs are cut at ~60 s by the server in both environments): the 360 chain built 7
   accounts over two chained batches in 4 min (~35 s per account); the daily-report batch wrote the last batch's reports and then
   health for 39 rows.
-- Prod all-accounts run started 9 Oct 21:57Z via a one-off scheduled trigger (deleted after it fired); ~100 accounts, ~1 hour.
+- Prod all-accounts run: started 9 Oct 21:57Z via a one-off scheduled trigger (deleted after it fired), finished 22:47Z; all 100
+  active accounts now have a current Account 360 (~30 s per account).
 - Reference copy of the builder: a360_batches_reference.py (needs the scratch helpers; for reading, not running).
 
 ## Not moved (by the plan or on purpose)
