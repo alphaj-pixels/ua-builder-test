@@ -315,6 +315,27 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   sentiment pill's own % still shows the Red percentage (page binding, left as is).
 - Prod copy before: prod_backups/slices/prod_wf_6a6d060ca36c357436252758_v67.json.gz.
 
+## Account 360 for all accounts, weekly; nightly in batches (9 Oct ~22:00Z, on request)
+
+- Why prod's 9 Oct nightly made no Account 360 and no health: the nightly called DB | Daily Account Report | Run synchronously and
+  prod's run (70 accounts) took the full 15 minutes (17:30 -> 17:45Z; UAT's 39 accounts took 12); the step after it, Account 360 |
+  Run, never ran. The run history isn't readable over the API, so this is inferred from the timings; the new design keeps every
+  call short either way. Account 360 also only ever refreshed accounts that already had one (4: AMN, Alternicq, Sagility, Shaw).
+- New, in prod and UAT (same content):
+  - DB | Daily Account Report | Batches (prod 6ac961710c83225fdb4c0af6, UAT 6ac95db245b5511b6f524286): 15 accounts per DAR | Run call, then starts itself
+    (async) for the next batch; after the last batch, Account 360 | Run with health_only=true (health for every account, no agents).
+  - DB | Account 360 | Batches (prod 6ac961733149ba7b22a82440, UAT 6ac95db3b4753b6f5d5db730): 4 non-churned accounts per Account 360 | Run call (Risk Theme +
+    Composer), then starts itself for the next batch.
+  - DB | Account 360 | Weekly (all accounts) (prod 6ac96286c221fa0b367e89ea, UAT 6ac96284b4753b6f5d5f4c19): Mondays 01:00 IST, starts the batches at 0.
+  - DB | Daily Account Report (nightly 23:00 IST) now only starts the daily-report batches (prod v1 -> v2, UAT v2 -> v3).
+- Prod was missing DB | Weekly Account Snapshot (6abe24c58838fb5226dbd5c8, Mondays 08:10 IST: weekly snapshot + Account 360 weekly
+  copy) - missed in Slice 5. Created from UAT with the same id.
+- Tested in UAT with real scheduled runs (test runs are cut at ~60 s by the server in both environments): the 360 chain built 7
+  accounts over two chained batches in 4 min (~35 s per account); the daily-report batch wrote the last batch's reports and then
+  health for 39 rows.
+- Prod all-accounts run started 9 Oct 21:57Z via a one-off scheduled trigger (deleted after it fired); ~100 accounts, ~1 hour.
+- Reference copy of the builder: a360_batches_reference.py (needs the scratch helpers; for reading, not running).
+
 ## Not moved (by the plan or on purpose)
 
 - DB | Portfolio Dashboard stays prod's (plan).
