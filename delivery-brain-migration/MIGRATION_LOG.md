@@ -276,6 +276,16 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   account id and an account name not in account_db, were archived in UAT and prod (is_archived = true; nothing else changed).
   Before: prod_backups/slices/prod_db_account_usecase_ati_before_archive.json.gz and the uat_backups copy.
 
+## UAT's 6 Oct data cleanup copied to prod (9 Oct ~20:30Z)
+
+- A scan for records UAT edited after prod (same id, UAT newer) found UAT's 6 Oct cleanup missing in prod. Copied (decision 9 Oct):
+  db_team_members name on 339 rows (e.g. kaniz.fatima@unifyapps.com -> Kaniz Fatima), account_name on 20 rows where UAT's value is
+  prod's account_db name for that row's account_id (e.g. HDFC -> HDFC Bank), and account_id C_321 on 5 Contentstack use cases
+  that had none. 355 records, only those fields. Prod email-style team names: 96 -> 36 (most left are on the 47 prod-only rows).
+  Left alone: UAT's stage changes back from Live, cleared usecaseIds, is_external going blank, extractor milestones, account_db
+  test edits, and db_project / db_use_case "id" renumbering (118 / 671 rows) - these look like tests or UAT-only runs.
+  Before: prod_backups/slices/prod_uat_cleanup_before.json.gz.
+
 ## Not moved (by the plan or on purpose)
 
 - DB | Portfolio Dashboard stays prod's (plan).
