@@ -261,6 +261,17 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   creates missing db_project records. First run: Mon 12 Oct 00:01 IST. Prod copy before: prod_wf_6a5728f31b404c75d053bb9d_v21.
   - Prod copy before the change: prod_backups/slices/prod_page_e_6a830a0e4b316420e0deb4fd_v3117.json.gz.
 
+## Task account names (9 Oct ~20:00Z)
+
+- The RBAC name filters (17 data sources) hid 1,304 of prod's 8,672 db_task_tracker rows from everyone, admins included:
+  'Shaw Industries' 882, 'Chargepoint' 144, 'SONY' 7 and 271 with no account, all from the 7-8 Sep bulk import. UAT's task
+  records had already been cleaned (only proper names, none blank); the migration moved definitions, not task records.
+- Fixed in prod (decision 9 Oct): 'account' set to the account_db name on 1,033 tasks, taken from the same task id in UAT (1,032)
+  or the spelling map (1): Shaw Industries -> Shaw Industries Group (882), Chargepoint -> ChargePoint (144), SONY -> Sony
+  Pictures (7). No other field changed. Rows before: prod_backups/slices/prod_db_task_tracker_before_account_fix.json.gz.
+- Still hidden: the 271 prod-only tasks with no account (not in UAT; 24 of them name a use case that belongs to one account), and
+  2 ATI Motors use cases (ATI Motors is not in account_db).
+
 ## Not moved (by the plan or on purpose)
 
 - DB | Portfolio Dashboard stays prod's (plan).
