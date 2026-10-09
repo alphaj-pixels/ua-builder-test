@@ -78,6 +78,19 @@ After publishing: both live pages equal UAT; all 17 data sources (16 + rbacScope
 Rollback for Slice 1: restore files from `prod_backups/slices/` (workflows via saveAndReturnViolations + deploy, data sources
 via /api/entity/update, pages via the hierarchical update), delete rbacScope and the RBAC workflow, then publish.
 
+### Follow-up: Signal Alerts card empty in prod (fixed 9 Oct, ~16:20Z)
+
+The VOC Signals tab showed "0 Critical / 0 open". UAT's alert data sources keep alerts whose `accounts_mentioned` is in the
+user's RBAC account names. Prod's 10 alerts (seed rows from 3 Sep; nothing writes db_singal_alerts in either environment)
+had the account only in `alerts_accounts_affected`, which is not searchable, so the filter dropped all of them; before the
+promotion prod's data sources had no filter. UAT's rows carry both fields with the same value (6 of 6), so prod's 10 rows
+got `accounts_mentioned` copied from `alerts_accounts_affected`, using the account_db name where it differed
+("KPMG" -> "KPMG India", "Ministry of Defense (MODHS)" -> "Ministry of Defense Health Services (MODHS) KSA"). The page's
+query now returns all 10 for an admin and none before the scope loads. No publish needed (data only). Rollback: unset
+`accounts_mentioned` on alert_101 … alert_110.
+Other RBAC-filtered VOC sources checked on prod data: meetings analysed 2,648 -> 2,647 (one row for C_350, which is not
+in account_db); the Program Lead filter list 135 -> 122 rows (team rows for accounts no longer in account_db).
+
 ## Next: slice 2 onward
 
 The RBAC scope also runs through the data sources of 27 UAT pages (e.g. Account Detail 41/65, Project Related Assets 20/31,
