@@ -216,10 +216,24 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   is unchanged. App published v145 -> v146 (~18:10Z). Before publishing, the two global data sources 24365's builder had saved
   again at 17:57Z (fetchRecordsDbSentimentScore2 with 3 duplicate RBAC filters, dbSteerCallsThisWeek with duplicate paths) were
   reset to the published copy (= UAT); the publish contained only the two menu changes.
+- Module 2 (decision 9 Oct: merge by hand), app published v146 -> v147 (~18:40Z):
+  - Page (v4546 -> v4547): only the use-case table changed. From UAT: the Sub-stage column (Discovery / Build / UAT, editable;
+    saves through dbUpdateUseCaseFields -> DB | Update use case fields, which sets the lock), the Go Live Date column filter and
+    the stage tooltip "Moving to Live needs a go-live date". Kept prod's: stage values ("Under Implementation"; UAT's dropdown
+    would save "Under implementation", which matches no data and no count), the vertical column's options source and colour,
+    page size 20, the Go Live filter with no default range (filters10), the Vertical dropdown in the create form, the
+    listUseCases count, prod's createNewUsecase1 source and the layout.
+  - Data sources: 7 now equal UAT (RBAC filter only): fetchSelectedAccDetails, fetchSelectedProjectDetails, usecaseidExists,
+    fetchRecordsDbProject, fetchAllAccounts, projects, fetchRecordsDbTeamMembers; fetchRecordsDbUseCase -> UAT's
+    fetchRecordsDbAccountUsecase (no block uses it). Merged: dbGetPmplCopy (UAT's rbac_scope / rbac_names with prod's filters10
+    dates), listUseCases (prod-only; same rbac params so the count matches the list), fetchNewUseCases (prod's account filters
+    AND the RBAC name filter; UAT's extra "or not archived" branch left out). Known limit: the 2 ATI Motors use cases, whose
+    account name is not in account_db, are filtered out of the "new use cases" table even for admins.
+  - Sub-stages are empty in prod (0 of 852). In UAT the stage extractor runs only when DB | Classify CXO Signals calls it
+    (the Slack signals pipeline, tied to the frozen db_cxo_intelligence_slack); nothing in prod calls it. UAT's 72 values
+    match prod's use cases by id (67 with the same stage). Until filled, the column is for manual entry.
+  - Prod copies before the change: prod_backups/slices/prod_page_e_6a83f68e4e1cc146c887ed69_v4546.json.gz and prod_ds_*.
 - Pages, still prod's:
-  - Module 2: changed on both sides. UAT adds the Sub-stage column with lock/override, a Go Live Date column filter, stage
-    wording and tooltip, and RBAC on its data sources. Prod adds the Vertical dropdown in the create form, the listUseCases count
-    and a Go Live filter with no default range.
   - account-directory: data sources already match UAT. UAT adds an "Approval Required" tab over account_db_2 (0 rows in prod: it
     is filled only by DB | sync acc to HS, paused in prod; its approve button also writes account_db.approved, a field neither
     environment has) and a links column (Task Management / VOC). Prod adds inline editing (region dropdown and others).
