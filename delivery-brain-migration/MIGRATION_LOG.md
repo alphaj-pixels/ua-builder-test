@@ -286,6 +286,21 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   test edits, and db_project / db_use_case "id" renumbering (118 / 671 rows) - these look like tests or UAT-only runs.
   Before: prod_backups/slices/prod_uat_cleanup_before.json.gz.
 
+## Account Health Dashboard RAG fixes in prod (9 Oct ~21:00Z, decision 9 Oct: all four), app published v148 -> v149
+
+1. "Load Last Week" (DB | Replicate Past Week Data, v17 -> v18): its rewrite of this week's whole submission_db row (which wiped
+   Account RAG, RAG/renewal comments, renewal health, submitted_by) is now a field update of status + the 7 scores only. Tested on
+   2 dummy UAT rows first (scores copied, everything else kept; rows deleted after).
+2. The 19 week-37 rows that had lost their Account RAG got it back from account_db (13 G, 3 A, 3 R; the other 81 rows already
+   matched account_db). Only ahd_rag_status was written. Before: prod_submission_db_wk37_before_rag_restore.json.gz.
+3. Account RAG column: the "G" fallback is removed, so a missing RAG (all weeks before 37) shows blank, not Green.
+4. RAG edit: update-ahd-rag-status (v10 -> v11) no longer writes account_db unconditionally (its first step is removed); the
+   existing current-week branch still does. After the save, the page now reloads the table (dbPortfolioDashboard) and the cards
+   (accounts). Page v7248 -> v7249, only the table block changed.
+- UAT still has the old workflows and page (identical to prod's before these fixes).
+- Prod copies before: prod_wf_6a61bce1385ecf7fb1742b6e_v17, prod_wf_6a992dc4a68c650ee244474d_v10,
+  prod_page_e_6a4b4ab7a57cfe022ab0b960_v7248.
+
 ## Not moved (by the plan or on purpose)
 
 - DB | Portfolio Dashboard stays prod's (plan).
