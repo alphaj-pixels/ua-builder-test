@@ -146,6 +146,42 @@ published on 1 Oct 09:14Z by 24369 (an import: ~80 workflows saved at that minut
   into UAT: Account Details form field4 required (24592, 3 Oct); Accounts table column style (24369, 1 Oct).
 - 61 other pages were already identical.
 
+## Slice 5 groundwork — Account 360 (9 Oct ~16:45-17:30Z), app published v143 -> v144
+
+- Objects: created atlas_issue, db_account_360, db_account_daily_report, db_usecase_daily_report with UAT's exact schemas;
+  added UAT's missing fields to account_db (+5), account_db_2 (+1), db_account_usecase (+15), db_cxo_intelligence (+36),
+  db_external_team_member (+1), db_project_activity (+3), db_risk_summary (+10), db_sentiment_score (+1, schema only),
+  db_weekly_account_snapshot (+8). Frozen objects untouched. Prod schemas before the change: prod_backups/slices/prod_schema_*.
+- Workflows (17, same ids as UAT): deployed the ones pages call — Account 360 | Health / Data / PDF (page URL switched to
+  sales.prod.unifyapps.com), Account Health Page | Data, Account Overview Tab | Data, Account Overview | Data / Edit,
+  Attention Accounts | Data, Weekly 360 | Data, Account 360 | Weekly copy. Saved but NOT deployed: Account 360 | Run,
+  Daily Account Report | Run, Use Case Stage Extractor | Run, Weekly Account Snapshot | Run (they call five agents that do not
+  exist in prod: Risk Theme e_6ac426abc078234cfbb66c87, Composer e_6ac426acc078234cfbb66c8b, Daily Account Summariser
+  e_6abb97e2c59ee249cf674833, Use Case Stage Extractor e_6ac435babd0bc764f8c2f14a, Weekly Account Snapshot
+  e_6abe1f1031b25c78709e6b8e), DB | Daily Account Report (nightly 23:00 IST), DB | Attention Accounts to Slack (23:15 IST; its
+  Slack connection 6abdf66d30617960ef094a7c is UAT's, needs prod's), sync-Atlas-projects-and-issues (not deployed in UAT either).
+- Pages created (same ids, in the page tree, not the menu): Account 360 · Daily Report, Account overview, Accounts that need
+  attention, with their 5 data sources. They stay empty until the pipeline has run.
+- Held: Account Detail and CXO_dashboard. Promoting them replaces prod's working Account Health tab with Account 360 tabs that
+  have no data until the agents exist and the nightly run has produced rows. Checks for them already pass: the upload flow
+  binds the same manual-upload-transcript / manual-uploaded-file workflows (prod's agent e_6a64cd4e87cd3b7aa81b5dbe), and the
+  UAT page reads none of db_cxo_intelligence_slack's frozen fields.
+- Global data sources fetchRecordsDbSentimentScore2 and dbSteerCallsThisWeek were found with the RBAC filter / dynamic paths
+  added twice by user 24365 (15:35Z); reset to UAT before publishing.
+
+## Closing checks (9 Oct ~17:35Z)
+
+DB | sync acc to HS, DB | update Account Region and get-meetings are paused; Delivery Brain | Usecase Timeline is deployed;
+no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import fresh (newest 15:30Z); sentiment scoring fresh.
+
+## Not moved (by the plan or on purpose)
+
+- Changed on both sides (plan: only Task Management merges in scope): Module 2, account-directory, Desktop / Mobile Navigation
+  pages; workflows DB | Fetch Account Directory, db | get pmpl (copy), db | patches and regions, DB | cohort-0, DB | Cohort 2,
+  DB | cohort-3, DB | Accounts region wise, DB | fetch use cases. DB | Portfolio Dashboard stays prod's (plan).
+- DB | Add Account Id to transcripts (UAT-ahead but uses UAT's connection and feeds sentiment scoring): left as prod's.
+- Account Health Dashboard page (blocks identical), VOC meetings_analyzed data source (edited in prod after the promotion).
+
 ## Next: slice 2 onward
 
 The RBAC scope also runs through the data sources of 27 UAT pages (e.g. Account Detail 41/65, Project Related Assets 20/31,
