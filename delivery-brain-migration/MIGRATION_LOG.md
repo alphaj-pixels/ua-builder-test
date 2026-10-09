@@ -269,8 +269,10 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
 - Fixed in prod (decision 9 Oct): 'account' set to the account_db name on 1,033 tasks, taken from the same task id in UAT (1,032)
   or the spelling map (1): Shaw Industries -> Shaw Industries Group (882), Chargepoint -> ChargePoint (144), SONY -> Sony
   Pictures (7). No other field changed. Rows before: prod_backups/slices/prod_db_task_tracker_before_account_fix.json.gz.
-- Still hidden: the 271 prod-only tasks with no account (not in UAT; 24 of them name a use case that belongs to one account), and
-  2 ATI Motors use cases (ATI Motors is not in account_db).
+- Deleted (decision 9 Oct, to match UAT): the 271 prod-only tasks with no account and no usecaseId, all from the 7-8 Sep import
+  (170 Done, 101 open). Done through a temporary workflow (delete by id; tested on 2 first, then removed). Prod now has 8,401
+  tasks, none without an account. Rows before: prod_backups/slices/prod_db_task_tracker_no_account_deleted.json.gz.
+- Still hidden: 2 ATI Motors use cases (ATI Motors is not in account_db).
 
 ## Not moved (by the plan or on purpose)
 
