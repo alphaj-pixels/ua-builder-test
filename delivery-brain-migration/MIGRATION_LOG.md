@@ -192,7 +192,7 @@ published on 1 Oct 09:14Z by 24369 (an import: ~80 workflows saved at that minut
 
 ## Closing checks (9 Oct ~17:35Z)
 
-DB | sync acc to HS, DB | update Account Region and get-meetings are paused; Delivery Brain | Usecase Timeline is deployed;
+DB | sync acc to HS (turned back on later, see above), DB | update Account Region and get-meetings are paused; Delivery Brain | Usecase Timeline is deployed;
 no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import fresh (newest 15:30Z); sentiment scoring fresh.
 
 ## Out-of-scope "merges" re-checked (9 Oct ~18:00Z)
@@ -254,7 +254,11 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
     stay hidden until the toggle is clicked), and the card/list view is hidden while Approval Required is selected (UAT shows both).
   - Not brought over: updateRecordsByQueryAccountDb (writes account_db.approved, a field neither environment has; nothing in UAT
     triggers it).
-  - The tab is empty in prod (account_db_2 has 0 rows): only DB | sync acc to HS fills it, and that stays paused per the plan.
+  - The tab was empty in prod (account_db_2 had 0 rows): only DB | sync acc to HS fills it.
+- DB | sync acc to HS turned back on in prod (decision 9 Oct, reversing the plan's closing step that kept it paused): v21 -> v22,
+  deployed, weekly Mon 00:01 IST. It now equals UAT: the one difference was UAT setting approved = false on new account_db_2
+  rows. It only reads HubSpot (connection "UnifyApps Prod (Read Only)"); it writes new deal companies to account_db_2 and
+  creates missing db_project records. First run: Mon 12 Oct 00:01 IST. Prod copy before: prod_wf_6a5728f31b404c75d053bb9d_v21.
   - Prod copy before the change: prod_backups/slices/prod_page_e_6a830a0e4b316420e0deb4fd_v3117.json.gz.
 
 ## Not moved (by the plan or on purpose)
