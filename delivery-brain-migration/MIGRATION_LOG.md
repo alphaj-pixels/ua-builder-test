@@ -238,15 +238,22 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
     Prod rows before the copy: prod_backups/slices/prod_db_account_usecase_before_substage.json.gz. New sub-stages come only
     from people editing the column until something in prod runs the stage extractor.
   - Prod copies before the change: prod_backups/slices/prod_page_e_6a83f68e4e1cc146c887ed69_v4546.json.gz and prod_ds_*.
-- Pages, still prod's:
-  - account-directory: data sources already match UAT. UAT adds an "Approval Required" tab over account_db_2 (0 rows in prod: it
-    is filled only by DB | sync acc to HS, paused in prod; its approve button also writes account_db.approved, a field neither
-    environment has) and a links column (Task Management / VOC). Prod adds inline editing (region dropdown and others).
+- Customer Hub / account-directory (decision 9 Oct: keep prod's inline editing, add UAT's approvals and links), app published
+  v147 -> v148 (~19:10Z). Page v3117 -> v3118:
+  - Added from UAT: the Accounts / Approval Required toggle, the Approval Required tab (table over account_db_2 with an editable
+    "approved" checkbox), the links column (Go to Task Management / Go to VOC) and data source updateRecordsByQueryAccountDb2
+    (same id; sets account_db_2.approved). Prod's empty leftover cell for that column was removed.
+  - Kept prod's: all 19 editable columns and their dropdowns (region, PL and others), the account-name icon, layout.
+  - Two fixes on top of UAT: the tab variable starts on "Accounts" (UAT's has no starting value, so the accounts table could
+    stay hidden until the toggle is clicked), and the card/list view is hidden while Approval Required is selected (UAT shows both).
+  - Not brought over: updateRecordsByQueryAccountDb (writes account_db.approved, a field neither environment has; nothing in UAT
+    triggers it).
+  - The tab is empty in prod (account_db_2 has 0 rows): only DB | sync acc to HS fills it, and that stays paused per the plan.
+  - Prod copy before the change: prod_backups/slices/prod_page_e_6a830a0e4b316420e0deb4fd_v3117.json.gz.
 
 ## Not moved (by the plan or on purpose)
 
-- Pages changed on both sides: Module 2, account-directory, Desktop / Mobile Navigation (see above). DB | Portfolio Dashboard
-  stays prod's (plan).
+- DB | Portfolio Dashboard stays prod's (plan).
 - DB | Add Account Id to transcripts (UAT-ahead but uses UAT's connection and feeds sentiment scoring): left as prod's.
 - Account Health Dashboard page (blocks identical), VOC meetings_analyzed data source (edited in prod after the promotion).
 
