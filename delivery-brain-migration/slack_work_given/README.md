@@ -83,3 +83,5 @@ Re-read finished, 9 Oct 17:15 IST: 2,510 conversations re-read with the everyone
 and the hourly job is back to no partition. Prod (Shivam's and Sandeep's teams, 565 people): 30 days 236 zero / 129 low / 200 engaged;
 7 days 345 / 126 / 94; 5,008 tasks in 30 days. UAT: same scripts and page deployed (its own access list), hourly still paused; prod's
 results copied over with `uat_copy.py` (no daily coverage job in UAT, it gets prod's `__coverage__` row).
+UAT copy finished: db_slack_assignments 10,374 (5,952 created), db_fdse_slack_engagement 616 (280 created, 336 updated; 5 old UAT-only
+rows left for people outside the tree), 'Slack assignment' tasks 5,021 (3,234 created). No errors.
