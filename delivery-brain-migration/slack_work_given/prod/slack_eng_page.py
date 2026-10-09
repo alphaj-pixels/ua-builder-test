@@ -108,7 +108,7 @@ def NC = (cov.no_channel instanceof List) ? cov.no_channel : []; def QC = (cov.q
 def ncA = NC.findAll { S(it.status) == 'active' }; def ncN = NC.findAll { S(it.status) != 'active' }
 def covUpd = cov.updated_at ? Instant.ofEpochMilli(cov.updated_at as long).atZone(ZONE).toLocalDate() : null
 def dayOf = { String iso -> try { iso ? fmt(Instant.parse(iso).atZone(ZONE).toLocalDate()) : '—' } catch (e) { '—' } }
-def SL = [active: 'Active', not_started: 'Not started']
+def SL = [active: 'Active', not_started: 'Awaiting kickoff']   // account_db status 'not_started' = signed, delivery not kicked off yet
 def accRows = ((cov.acc_list instanceof List) ? cov.acc_list : []).withIndex().collect { a, k -> int nch = N(a.n_ch); int ms = N(a.msgs)
   [id: 'a' + k, name: S(a.name), status: SL[S(a.status)] ?: S(a.status), channels: nch ? S(a.channels) : 'No Slack channel added', n_ch: nch.toString(), msgs: ms.toString(),
    last: dayOf(S(a.last)), tone: nch == 0 ? 'R' : (ms == 0 ? 'A' : 'G')] }

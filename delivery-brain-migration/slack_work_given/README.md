@@ -75,3 +75,6 @@ Drawers and 7 days, 9 Oct 15:30 IST (prod, app version 138):
   `wrappedInLayout`, open/close actions without `method`), opened by "View all 97 accounts" / "View all 188 channels" buttons.
 - An account counts as churned only when every row with its name is churned (Bayer, CLP and Dubai Airports have one churned and one
   live copy). Prod: 100 non-churned accounts (99 with churn_flag false, plus Keka with no flag), 36 with no Slack channel.
+- Coverage card made compact the way it was laid out in the builder (number, one line, View all button per side; the lists only in the
+  drawers). Drawers: 2xl padding and filters (accounts: All / With channels / No channel; channels: All / With messages / No messages).
+  Account status 'not_started' shows as "Awaiting kickoff". App published.

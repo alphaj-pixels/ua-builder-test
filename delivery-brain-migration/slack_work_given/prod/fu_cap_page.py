@@ -15,6 +15,7 @@ WIN_DEFAULT = "30" if "--month" in __import__("sys").argv else "7"
 V_MGR, V_TAB, V_CELL, V_LIM, V_LOAD, V_WIN = FU.V_MGR, "var_futab", "var_fucell", "var_fulim", "var_fuload", "var_fuwin"
 V_COV = "var_fucov"   # Slack coverage card: '' short lists, 'all' full lists
 V_EWIN = "var_fuewin"   # Slack engagement window: '30' (by week) or '7' (by day)
+V_DACC, V_DCH = "var_fudacc", "var_fudch"   # drawer filters: accounts all/with/without channels; channels all/with/without messages
 EW = "(" + V_EWIN + "['value'] || '30')"
 V_MODE, V_ETAB, V_ELIM = "var_fumode", "var_fuetab", "var_fuelim"   # load (Past 30 days / Past 7 days / This week / Next 30 days) or slack (Slack engagement); engagement tab and list limit
 MODE_DEFAULT = "slack" if "--slack" in __import__("sys").argv else "load"
@@ -239,33 +240,26 @@ def build_cov(pg, eds, main, grid, chead):
     cc = box(main, CARD, name="cov_card", visible=show(E("$V?.['has'] === 'yes' ? 'yes' : 'no'")))
     chead(cc, "Slack coverage", E("'Work in accounts or channels we cannot read never shows up in Slack engagement or the past 7 and 30 days. ' + ($V?.['updated'] || '')"))
     g2 = grid(cc, "minmax(0,1fr) minmax(0,1fr)", extra="align-items:start; gap:24px !important;")
-    LIST = "line-height:1.6 !important;"
-    ALL = "(" + V_COV + "['value'] === 'all')"
-    L_ = lambda k: E(ALL + " ? ($V?.['" + k + "'] || '') : ($V?.['" + k + "_s'] || '')")   # short list until Show all
     a = box(g2, "gap:6px; min-width:0;")
     ah = box(a, "gap:8px; align-items:baseline;", direction="row")
     t(ah, D("nc_n"), "display-xs", css="font-size:28px !important; font-weight:400 !important;", attrs={"data-fu-fg": "R"})
     t(ah, E("'of ' + ($V?.['accounts'] || '0') + ' accounts have no Slack channel added'"), "text-md")
-    t(a, E("'Active (' + ($V?.['nc_active_n'] || '0') + ')'"), css=CAP)
-    t(a, L_("nc_active"), "text-sm", css=LIST)
-    t(a, E("'Not started (' + ($V?.['nc_ns_n'] || '0') + ')'"), css=CAP)
-    t(a, L_("nc_ns"), "text-sm", css=LIST)
+    t(a, "These accounts have no channel mapped in slack_channel, so no work from them can be read.", css=MUTE)   # the lists live in the drawers
     b = box(g2, "gap:6px; min-width:0;")
     bh = box(b, "gap:8px; align-items:baseline;", direction="row")
     t(bh, D("q_n"), "display-xs", css="font-size:28px !important; font-weight:400 !important;", attrs={"data-fu-fg": "A"})
     t(bh, E("'of ' + ($V?.['channels'] || '0') + ' channels have no data in the past 30 days'"), "text-md")
-    t(b, "No messages were fetched from these channels: they were quiet, or the Slack app isn't a member.", css=MUTE)
-    t(b, L_("quiet"), "text-sm", css=LIST)
-    sa = t(cc, E(ALL + " ? 'Show less' : 'Show all'"), css="color:var(--fu-link) !important; cursor:pointer; width:fit-content;", visible=show(E("$V?.['more'] === 'yes' ? 'yes' : 'no'")))
-    pg.blocks[sa]["events"] = [setv(V_COV, E(ALL + " ? '' : 'all'"), "fucovall")]
+    t(b, "No messages were fetched from these channels: they were quiet", css=MUTE)
     # drawers: every non-churned account, and every mapped channel, opened from the two numbers
     LINK = "color:var(--fu-link) !important; cursor:pointer; width:fit-content;"
     da = cov_drawer(pg, grid, CV, "cov_acc_drawer", E("'Accounts (' + ($V?.['accounts'] || '0') + ')'"), "acc_sub", "acc_rows",
                     [("Account", "minmax(0,1.3fr)"), ("Status", "90px"), ("Slack channels", "minmax(0,1.6fr)"), ("Messages, 30 days", "90px"), ("Last message", "90px")],
-                    ["name", "status", "channels", "msgs", "last"])
+                    ["name", "status", "channels", "msgs", "last"], V_DACC,
+                    [("all", "All", "true"), ("with", "With channels", "r['tone'] !== 'R'"), ("without", "No channel", "r['tone'] === 'R'")])
     dc = cov_drawer(pg, grid, CV, "cov_ch_drawer", E("'Mapped Slack channels (' + ($V?.['channels'] || '0') + ')'"), "ch_sub", "ch_rows",
                     [("Channel", "minmax(0,1.3fr)"), ("Account", "minmax(0,1.2fr)"), ("Messages, 30 days", "90px"), ("Last message", "90px")],
-                    ["channel", "account", "msgs", "last"])
+                    ["channel", "account", "msgs", "last"], V_DCH,
+                    [("all", "All", "true"), ("msgs", "With messages", "r['tone'] === 'G'"), ("none", "No messages", "r['tone'] !== 'G'")])
     for hb, d_, eid in ((ah, da, "fucovacc"), (bh, dc, "fucovch")):
         pg.blocks[hb]["events"] = [drawer_ev(d_, "show", eid)]
         pg.blocks[hb]["additional"]["customCSS"] = pg.blocks[hb]["additional"]["customCSS"].replace("gap:8px;", "gap:8px; cursor:pointer;")
@@ -278,23 +272,30 @@ def drawer_ev(did, op, eid):   # same shape as the working drawers on the accoun
     return {"id": "evt_" + eid, "eventType": "onClick", "action": {"id": "act_" + eid, "actionType": "controlDrawer", "executionType": "delay",
             "payload": {"drawerId": did, "operation": op}, "onSuccessActions": []}}
 
-def cov_drawer(pg, grid, CV, name, title, sub_key, rows_key, cols, keys):
+def cov_drawer(pg, grid, CV, name, title, sub_key, rows_key, cols, keys, fvar, filters):
     """A right-hand drawer with a table of the coverage rows; the first column carries the row's tone dot."""
     t = pg.text
     d = pg.add("root_id", "Drawer", {"position": "right", "defaultHeight": "h-full", "defaultWidth": {"custom": "50%"}, "type": "fixed", "styles": {},
                                      "backdrop": {"showBackdrop": True, "backdropStyles": {"backgroundColor": "var(--palette-alpha-white-05)", "blurRadius": 8}}},
                {"variant": "card", "hideOnClickOutside": True, "allowResize": True}, None, name)
-    bd = pg.stack(d, "column", "gap:0; padding:0 0 24px;", name + "_body")
-    pg.blocks[bd]["component"]["appearance"]["styles"].update({"height": "h-full", "width": "w-full"})
+    bd = pg.stack(d, "column", "gap:0;", name + "_body")
+    pg.blocks[bd]["component"]["appearance"]["styles"].update({"height": "h-full", "width": "w-full", "padding": {"all": "p-2xl"}})
     pg.blocks[d]["component"]["slots"] = {"body": {"blockId": bd, "wrappedInLayout": True}}
     hd = pg.stack(bd, "row", "gap:12px; align-items:center; justify-content:space-between; width:100%; margin-bottom:4px;", name + "_head")
     t(hd, title, "text-md", "semi-bold")
     cl = t(hd, "Close ✕", css="color:var(--fu-link) !important; cursor:pointer; white-space:nowrap;"); pg.blocks[cl]["events"] = [drawer_ev(d, "hide", name + "x")]
     t(bd, "{{ " + CV + "?.['" + sub_key + "'] || '' }}", "text-sm", css=MUTE + " margin-bottom:12px !important;")
+    FV = "(" + fvar + "['value'] || 'all')"; ROWS = "(" + CV + "?.['" + rows_key + "'] || [])"
+    ft = pg.box(bd, "gap:0; border:1px solid var(--fu-line); border-radius:999px; background:var(--fu-hover); padding:3px; width:fit-content; margin-bottom:12px;", direction="row", name=name + "_filter")
+    for key, lab, pred in filters:
+        fb = pg.box(ft, "padding:4px 14px; border-radius:999px; cursor:pointer;", {"data-fu-on": "{{ " + FV + " === '" + key + "' ? 'yes' : 'no' }}"}, name=name + "_f_" + key)
+        t(fb, "{{ '" + lab + " (' + " + ROWS + ".filter(r => " + pred + ").length + ')' }}", css="white-space:nowrap;")
+        pg.blocks[fb]["events"] = [setv(fvar, key, name + "f" + key)]
+    SEL = "(" + " : ".join(f"{FV} === '{key}' ? (r => {pred})" for key, _, pred in filters[1:]) + " : (r => true))"
     G = " ".join(w for _, w in cols)
     h = grid(bd, G, extra="padding-bottom:6px; align-items:end;")
     for lab, _ in cols: t(h, lab, css=CAP + " font-size:11px !important;")
-    rp = pg.repeat(bd, "{{ " + CV + "?.['" + rows_key + "'] || [] }}", name + "_rows", gap="gap-none")
+    rp = pg.repeat(bd, "{{ " + ROWS + ".filter(" + SEL + ") }}", name + "_rows", gap="gap-none")
     rw = grid(rp, G, name=name + "_row", extra="padding:8px 0; border-top:1px solid var(--fu-line); align-items:start;")
     it = lambda k: "{{ " + rp + "['context']['item']['" + k + "'] }}"
     first = pg.box(rw, "gap:8px; align-items:center; min-width:0;", direction="row")
@@ -509,7 +510,9 @@ def push():
                               V_ETAB: {"name": "engagementTab", "type": "string", "id": V_ETAB, "createdTime": now, "initialValue": ""},
                               V_ELIM: {"name": "engagementLimit", "type": "string", "id": V_ELIM, "createdTime": now, "initialValue": "25"},
                               V_COV: {"name": "coverageLists", "type": "string", "id": V_COV, "createdTime": now, "initialValue": ""},
-                              V_EWIN: {"name": "engagementWindow", "type": "string", "id": V_EWIN, "createdTime": now, "initialValue": "7" if "--seven" in sys.argv else "30"}}
+                              V_EWIN: {"name": "engagementWindow", "type": "string", "id": V_EWIN, "createdTime": now, "initialValue": "7" if "--seven" in sys.argv else "30"},
+                              V_DACC: {"name": "accountsFilter", "type": "string", "id": V_DACC, "createdTime": now, "initialValue": "all"},
+                              V_DCH: {"name": "channelsFilter", "type": "string", "id": V_DCH, "createdTime": now, "initialValue": "all"}}
     props["blocks"] = pg.blocks
     props["customCode"] = {**(props.get("customCode") or {}), "header": css(pg)}
     props["metadata"] = {**props.get("metadata", {}), "_blockCounter": pg.counter}
