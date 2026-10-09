@@ -13,6 +13,7 @@ import fu_page as FU
 LOAD_DEFAULT = "grid" if "--grid" in __import__("sys").argv else "scatter"
 WIN_DEFAULT = "30" if "--month" in __import__("sys").argv else "7"
 V_MGR, V_TAB, V_CELL, V_LIM, V_LOAD, V_WIN = FU.V_MGR, "var_futab", "var_fucell", "var_fulim", "var_fuload", "var_fuwin"
+V_COV = "var_fucov"   # Slack coverage card: '' short lists, 'all' full lists
 V_MODE, V_ETAB, V_ELIM = "var_fumode", "var_fuetab", "var_fuelim"   # load (Past 30 days / Past 7 days / This week / Next 30 days) or slack (Slack engagement); engagement tab and list limit
 MODE_DEFAULT = "slack" if "--slack" in __import__("sys").argv else "load"
 MODE = "(" + V_MODE + "['value'] || 'load')"
@@ -72,6 +73,7 @@ def build(pg, ds, eds):
         pg.blocks[b]["events"] = ([setv(V_MODE, "slack", "fumodeslack"), setv(V_ETAB, "", "fuetabslack"), setv(V_ELIM, "25", "fuelimslack")] if key == "slack" else
                                   [setv(V_MODE, "load", "fumode" + key), setv(V_WIN, key, "fuwin" + key), setv(V_CELL, "", "fuwinc" + key), setv(V_LIM, "25", "fuwinl" + key), setv(V_TAB, "", "fuwint" + key)])
 
+    build_cov(pg, eds, main, grid, chead)
     body = box(main, "gap:16px;", name="body", visible=show("{{ (" + C + " && " + MODE + " === 'load') ? 'yes' : 'no' }}"))
     build_eng(pg, eds, main, grid, button, chead, dot)
 
@@ -221,10 +223,40 @@ def build(pg, ds, eds):
     for line in ("Utilisation is the load landing in the window against capacity for the window: this week uses 7 days and weekly capacity (60 story points unless set); next 30 days uses 30 days and 30/7 of weekly capacity, with tasks due inside 30 days counting in full; past 30 days and past 7 days count every task assigned to the person in that many days, done or not (Slack tasks dated by the Slack message, others by the day they were added to the tracker), against 30/7 of weekly capacity or one week's capacity. Each task counts its story points (1 when blank), weighted by timing (overdue ×1.25) and status (waiting ×0.5). Owners split a task; reviewers share 20%.",
                  "Under-used is below 60%, medium 60 to 69%, optimal 70 to 99%, overloaded 100% or more. No tasks means nothing open is assigned to the person in Task Management for the window (for past 30 days and past 7 days: no task was assigned to them in that window); those people are kept apart because it usually means work isn't logged.",
                  "Status is the share of a team's people with tasks who are under-used or overloaded: red at 30% or more, amber 20 to 29%, green below 20%. Data quality is the share of the team's open tasks with story points and a due date: green at 80% or more, amber 60 to 79%, red below 60%.",
-                 "There is no look-back view: task records carry no completion dates and scores aren't stored over time, so the last 30 days can't be rebuilt. Very few open tasks have a future due date, which is why the next-30-days view runs low."):
+                 "Past 7 and past 30 days look back over the tasks assigned in that window; work that was never logged in the tracker or given in a Slack channel we read can't show up. Very few open tasks have a future due date, which is why the next-30-days view runs low."):
         t(nt, line, css=MUTE + " line-height:1.6;")
     R.wire({b: pg.blocks[b] for b in pg.new}, {ds, eds})
     return root
+
+def build_cov(pg, eds, main, grid, chead):
+    """Slack coverage card (every view): accounts with no Slack channel added, and mapped channels with no messages in the past 30 days."""
+    CV = eds + "['data']?.['eng']?.['cov']"
+    D = lambda *k: "{{ " + CV + "?." + "?.".join(f"['{x}']" for x in k) + " }}"
+    E = lambda js: "{{ " + js.replace("$V", CV) + " }}"
+    t, box = pg.text, pg.box
+    cc = box(main, CARD, name="cov_card", visible=show(E("$V?.['has'] === 'yes' ? 'yes' : 'no'")))
+    chead(cc, "Slack coverage", E("'Work in accounts or channels we cannot read never shows up in Slack engagement or the past 7 and 30 days. ' + ($V?.['updated'] || '')"))
+    g2 = grid(cc, "minmax(0,1fr) minmax(0,1fr)", extra="align-items:start; gap:24px !important;")
+    LIST = "line-height:1.6 !important;"
+    ALL = "(" + V_COV + "['value'] === 'all')"
+    L_ = lambda k: E(ALL + " ? ($V?.['" + k + "'] || '') : ($V?.['" + k + "_s'] || '')")   # short list until Show all
+    a = box(g2, "gap:6px; min-width:0;")
+    ah = box(a, "gap:8px; align-items:baseline;", direction="row")
+    t(ah, D("nc_n"), "display-xs", css="font-size:28px !important; font-weight:400 !important;", attrs={"data-fu-fg": "R"})
+    t(ah, E("'of ' + ($V?.['accounts'] || '0') + ' accounts have no Slack channel added'"), "text-md")
+    t(a, E("'Active (' + ($V?.['nc_active_n'] || '0') + ')'"), css=CAP)
+    t(a, L_("nc_active"), "text-sm", css=LIST)
+    t(a, E("'Not started (' + ($V?.['nc_ns_n'] || '0') + ')'"), css=CAP)
+    t(a, L_("nc_ns"), "text-sm", css=LIST)
+    b = box(g2, "gap:6px; min-width:0;")
+    bh = box(b, "gap:8px; align-items:baseline;", direction="row")
+    t(bh, D("q_n"), "display-xs", css="font-size:28px !important; font-weight:400 !important;", attrs={"data-fu-fg": "A"})
+    t(bh, E("'of ' + ($V?.['channels'] || '0') + ' channels have no data in the past 30 days'"), "text-md")
+    t(b, "No messages were fetched from these channels: they were quiet, or the Slack app isn't a member.", css=MUTE)
+    t(b, L_("quiet"), "text-sm", css=LIST)
+    sa = t(cc, E(ALL + " ? 'Show less' : 'Show all'"), css="color:var(--fu-link) !important; cursor:pointer; width:fit-content;", visible=show(E("$V?.['more'] === 'yes' ? 'yes' : 'no'")))
+    pg.blocks[sa]["events"] = [setv(V_COV, E(ALL + " ? '' : 'all'"), "fucovall")]
+    return cc
 
 def build_eng(pg, eds, main, grid, button, chead, dot):
     """Slack engagement view: work given to each FDSE in each of the past 4 weeks, from the task tracker (Engaged / Low / Zero)."""
@@ -242,6 +274,38 @@ def build_eng(pg, eds, main, grid, button, chead, dot):
     t(br, D("lead"), "display-xs", css="font-size:28px !important; line-height:1.25 !important; font-weight:400 !important; max-width:40ch; margin:8px 0 !important;")
     t(br, D("rest"), "text-md", css="line-height:1.65 !important; max-width:72ch;")
     t(br, D("coverage"), css=MUTE + " margin-top:12px !important; padding-top:16px; border-top:1px solid var(--fu-line); max-width:80ch;")
+    # scatter: across = work given in the past 30 days, up = weeks with work given; no work given sits in the left lane
+    sc = box(eb, CARD, name="eng_scatter")
+    t(sc, "Everyone, by Slack engagement", css=CAP)
+    t(sc, "Each dot is one person. Across: pieces of work given in the past 30 days. Up: how many of the last 4 weeks they were given work. People given no work sit in the left lane. Hover a dot for the name.", css=MUTE)
+    lg = pg.repeat(sc, D("tabs"), "eng_legend", gap="gap-lg")
+    pg.blocks[lg]["component"]["appearance"].update({"layout": "list", "direction": "horizontal"})
+    li = box(lg, "gap:6px; align-items:center; width:auto !important;", direction="row")
+    dot(li, it(lg, "tone")); t(li, it(lg, "l"), css=MUTE + " white-space:nowrap;"); t(li, it(lg, "n"), weight="medium", css="white-space:nowrap;")
+    LANE_W, YAX_W = 84, 52
+    area = box(sc, "gap:12px; align-items:stretch; margin-top:8px;", direction="row", name="esc_area")
+    lane = box(area, f"flex:0 0 {LANE_W}px; width:{LANE_W}px; height:340px; border:1px solid var(--fu-line); border-radius:8px; position:relative;", name="esc_lane")
+    ld = pg.repeat(lane, E("($E?.['scatter'] || []).filter(p => p['lane'] === 'yes')"), "esc_lane_dots", gap="gap-none")
+    yax = box(area, f"flex:0 0 {YAX_W}px; width:{YAX_W}px; height:340px; position:relative;", name="esc_yaxis")
+    for lab, pos in (("1 week", 12.5), ("2 weeks", 37.5), ("3 weeks", 62.5), ("4 weeks", 87.5)):
+        t(yax, lab, css=MUTE + f" position:absolute; right:6px; bottom:{pos}%; transform:translateY(50%); white-space:nowrap;")
+    plot = box(area, "flex:1 1 auto; height:340px; position:relative; border-left:1px solid var(--fu-line); border-bottom:1px solid var(--fu-line);", name="esc_plot")
+    box(plot, "position:absolute; left:0; right:0; bottom:50%; height:0; border-top:1px dashed var(--fu-line);")
+    for xv in (20, 40, 60, 80):
+        box(plot, f"position:absolute; top:0; bottom:0; left:{xv}%; width:0; border-left:1px solid var(--fu-hover);")
+    for txt, pos in (("Engaged: work in 3 or 4 weeks", "top:8px; right:10px;"), ("Low: work in 1 or 2 weeks", "bottom:10px; right:10px;")):
+        t(plot, txt, css=MUTE + f" position:absolute; {pos} font-style:italic; white-space:nowrap;")
+    dts = pg.repeat(plot, E("($E?.['scatter'] || []).filter(p => p['lane'] === 'no')"), "esc_dots", gap="gap-none")
+    for rep_, nm_ in ((ld, "esc_lane_dot"), (dts, "esc_dot")):
+        box(rep_, "position:absolute; width:10px; height:10px; margin-left:-5px; margin-bottom:-5px; border-radius:50%; cursor:default;",
+            {"data-fu-pt": it(rep_, "tone"), "data-sx": it(rep_, "sx"), "data-sy": it(rep_, "sy"), "data-tip": it(rep_, "tip")}, name=nm_)
+    xax = box(sc, f"gap:0; margin-left:{LANE_W + YAX_W + 24}px; height:22px; position:relative; margin-top:4px;", name="esc_xaxis")
+    t(xax, "No work given", css=MUTE + f" position:absolute; left:-{LANE_W + YAX_W + 24}px; width:{LANE_W}px; text-align:center;")
+    for lab, xv in (("0", 0), ("10", 20), ("20", 40), ("30", 60), ("40", 80), ("50+", 100)):
+        t(xax, lab, css=MUTE + f" position:absolute; left:{xv}%; transform:translateX(-50%); white-space:nowrap;")
+    axl = box(sc, f"gap:0; margin-left:{LANE_W + YAX_W + 24}px; justify-content:space-between;", direction="row")
+    t(axl, "↑ Weeks with work given", css=MUTE)
+    t(axl, "Work given in the past 30 days →", css=MUTE)
     # people
     pc = box(eb, CARD, name="eng_people")
     chead(pc, "People", "Tasks given each week, oldest week first. Zero means no task in the task tracker was given to them in the past 30 days.")
@@ -283,10 +347,10 @@ def build_eng(pg, eds, main, grid, button, chead, dot):
     pg.blocks[sa]["events"] = [setv(V_ELIM, "all", "fueshowall")]
     # by leader
     lc = box(eb, CARD, name="eng_leaders")
-    chead(lc, "By leader", E("'People reporting to ' + (" + eds + "['data']?.['tier']?.['focus']?.['name'] || '') + ' who lead FDSEs, highest share given no work first.'"))
+    chead(lc, "By leader", E("'People reporting to ' + (" + eds + "['data']?.['tier']?.['focus']?.['name'] || '') + ' who lead a team, highest share given no work first.'"))
     LG = "120px minmax(0,1.4fr) 70px repeat(3,minmax(0,.7fr)) 110px 110px"
     h = grid(lc, LG, extra="padding-bottom:6px;")
-    for x in ("Status", "Leader", "FDSEs", "Engaged", "Low", "Zero", "No work given", ""): t(h, x, css=CAP + " white-space:nowrap;")
+    for x in ("Status", "Leader", "People", "Engaged", "Low", "Zero", "No work given", ""): t(h, x, css=CAP + " white-space:nowrap;")
     lr = pg.repeat(lc, D("leaders"), "eng_leader_rows", gap="gap-none")
     lrw = grid(lr, LG, name="eng_leader_row", extra="padding:10px 0; border-top:1px solid var(--fu-line);")
     sl = box(lrw, "gap:6px; align-items:center;", direction="row"); dot(sl, it(lr, "status"))
@@ -304,7 +368,7 @@ def build_eng(pg, eds, main, grid, button, chead, dot):
     nt = box(eb, "gap:4px; max-width:90ch; padding:0 4px;", name="eng_notes")
     for line in ("Work given means a task in the task tracker owned by the person and given in the past 30 days. Most come from Slack: the Slack Task Assignment agent reads every mapped account channel and adds a 'Slack assignment' task whenever someone is asked to do something, handed an item or shown owning one ('@name can you…', 'please pick this', 'POC - name', '@name in progress ETA…'); a tag on its own, cc lists, FYIs, thanks and @group broadcasts don't count. Tasks from the Slack CXO records and tasks logged directly in the tracker count too.",
                  "The date a task was given is its Slack message date for Slack tasks, otherwise the date it was added to the tracker. A Slack CXO task on the same message as a Slack assignment counts once. Open and done come from the task's status in the tracker.",
-                 "Engaged means work was given in 3 or 4 of the last 4 weeks, low in 1 or 2 weeks, zero in none. FDSEs are people whose role in user management says Forward Deployed Engineer. Slack is fetched daily for the previous day and read every hour. Status is the share of a leader's FDSEs given no work: red at 40% or more, amber 20 to 39%, green below 20%."):
+                 "Engaged means work was given in 3 or 4 of the last 4 weeks, low in 1 or 2 weeks, zero in none. Everyone under the leader in user management counts, whatever their role. Slack is fetched daily for the previous day and read every hour. Status is the share of a leader's people given no work: red at 40% or more, amber 20 to 39%, green below 20%."):
         t(nt, line, css=MUTE + " line-height:1.6;")
     return eb
 
@@ -333,7 +397,7 @@ def css(pg):
             + "[data-fu-pt='X']{background:#FFFFFF; border:1.5px solid #8C877C; opacity:.9;}[data-fu-pt]:hover{opacity:1; border-color:var(--fu-ink); z-index:5;}"
             "[data-tip]:hover::after{content:attr(data-tip); position:absolute; left:50%; bottom:16px; transform:translateX(-50%); background:#1F3226; color:#F5F3EE; font-size:12px; line-height:1.3; padding:6px 8px; border-radius:8px; white-space:nowrap; z-index:10; pointer-events:none;}"
             + "".join(f"[data-block-id='{b}']{{position:absolute !important; inset:0; display:block !important; height:100%; overflow:visible !important;}}[data-block-id='{b}'] *:not([data-fu-pt]){{position:static !important; transform:none !important;}}[data-block-id='{b}'] [data-fu-pt]{{position:absolute !important;}}"
-                      for b in [x for x, y in pg.blocks.items() if y.get("displayName") in ("fu_sc_dots", "fu_sc_lane_dots", "fu_sc_yticks", "fu_sc_ygrid")])
+                      for b in [x for x, y in pg.blocks.items() if y.get("displayName") in ("fu_sc_dots", "fu_sc_lane_dots", "fu_sc_yticks", "fu_sc_ygrid", "fu_esc_dots", "fu_esc_lane_dots")])
             + "".join(f"[data-block-id='{b}'] [data-sy]{{position:absolute !important;}}" for b in [x for x, y in pg.blocks.items() if y.get("displayName") in ("fu_sc_yticks", "fu_sc_ygrid")])
             + "[data-fu-on='yes']{background:#1F3226 !important;}[data-fu-on='yes'] *{color:#F5F3EE !important;}[data-fu-on='no'] *{color:var(--fu-muted) !important;}"
             "[data-fu-wk='on']{background:rgba(40,115,74,.16) !important;}[data-fu-wk='on'] *{color:#1F5A39 !important; font-weight:600 !important;}"
@@ -381,7 +445,8 @@ def push():
                               V_WIN: {"name": "periodDays", "type": "string", "id": V_WIN, "createdTime": now, "initialValue": WIN_DEFAULT},
                               V_MODE: {"name": "viewMode", "type": "string", "id": V_MODE, "createdTime": now, "initialValue": MODE_DEFAULT},
                               V_ETAB: {"name": "engagementTab", "type": "string", "id": V_ETAB, "createdTime": now, "initialValue": ""},
-                              V_ELIM: {"name": "engagementLimit", "type": "string", "id": V_ELIM, "createdTime": now, "initialValue": "25"}}
+                              V_ELIM: {"name": "engagementLimit", "type": "string", "id": V_ELIM, "createdTime": now, "initialValue": "25"},
+                              V_COV: {"name": "coverageLists", "type": "string", "id": V_COV, "createdTime": now, "initialValue": ""}}
     props["blocks"] = pg.blocks
     props["customCode"] = {**(props.get("customCode") or {}), "header": css(pg)}
     props["metadata"] = {**props.get("metadata", {}), "_blockCounter": pg.counter}

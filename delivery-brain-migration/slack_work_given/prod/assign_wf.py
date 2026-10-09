@@ -28,15 +28,29 @@ def norm = { v -> S(v).toLowerCase().replaceAll(/[^a-z0-9]+/, ' ').trim() }
 int days = (S(binding.hasVariable('days') ? days : '') ==~ /\d+/) ? (days as int) : 30
 int cap = (S(binding.hasVariable('max_batches') ? max_batches : '') ==~ /\d+/) ? (max_batches as int) : 40
 def since = Instant.now().minusSeconds(days * 86400L)
-def roster = L('um').collect { it.properties ?: [:] }.findAll { S(it.role).toLowerCase().contains('forward deployed') && S(it.emp_email).contains('@') }
+def BV = { String n -> binding.hasVariable(n) ? S(binding.getVariable(n)) : '' }
+int part = BV('part') ==~ /\d+/ ? (BV('part') as int) : 0
+int parts = BV('parts') ==~ /\d+/ ? Math.max(1, BV('parts') as int) : 1
+// roster: everyone in Sumeet Nandal's reporting tree (all roles, not just FDSEs)
+def UMP = L('um').collect { it.properties ?: [:] }.findAll { S(it.emp_email).contains('@') }
+def umMgr = UMP.collectEntries { [S(it.emp_email).toLowerCase(), S(it.manager_email).toLowerCase()] }
+def umKids = umMgr.groupBy { k, v -> v }.collectEntries { k, v -> [k, v.keySet() as List] }
+def tree = ['sumeet@unifyapps.com'] as Set; def stk = ['sumeet@unifyapps.com']
+while (stk) { def x = stk.pop(); (umKids[x] ?: []).each { c -> if (tree.add(c)) stk << c } }
+def roster = UMP.findAll { tree.contains(S(it.emp_email).toLowerCase()) }.unique { S(it.emp_email).toLowerCase() }
+def fdse = UMP.findAll { S(it.role).toLowerCase().contains('forward deployed') }.collect { S(it.emp_email).toLowerCase() }.unique()
 def rosterText = roster.collect { S(it.emp_name) + ' | ' + S(it.emp_email).toLowerCase() }.join('\n')
-def checked = L('asg').collect { it.properties ?: [:] }.findAll { it.row_kind == 'checked' }.collect { S(it.source_id) } as Set
-def seen = [] as Set
+def A0 = L('asg').collect { it.properties ?: [:] }
+def checked = A0.findAll { it.row_kind == 'checked' }.collect { S(it.source_id) } as Set     // read with the FDSE-only roster
+def checked2 = A0.findAll { it.row_kind == 'checked2' }.collect { S(it.source_id) } as Set   // read with the everyone roster
+def seen = [] as Set; int unreadAll = 0
 def convs = L('conv').collect { it.properties ?: [:] }.findAll { c ->
-  def sid = S(c.source_id); if (!sid || !seen.add(sid) || checked.contains(sid)) return false
+  def sid = S(c.source_id); if (!sid || !seen.add(sid) || checked2.contains(sid)) return false
   def t = null; try { t = Instant.parse(S(c.message_datetime)) } catch (e) { }
   def txt = S(c.conversation_text) ?: S(c.message_text)
-  t != null && t.isAfter(since) && !(c.is_bot in [true, 'true']) && (txt.contains('@') || txt.toUpperCase().contains('POC')) }
+  def ok = t != null && t.isAfter(since) && !(c.is_bot in [true, 'true']) && (txt.contains('@') || txt.toUpperCase().contains('POC'))
+  if (ok) unreadAll++
+  ok && (parts <= 1 || Math.abs(sid.hashCode() % parts) == part) }   // parallel runs each take one partition
   .sort { a, b -> S(b.message_datetime) <=> S(a.message_datetime) }
 def batches = []; def cur = [], curLen = 0
 def flush = { if (cur) { batches << [ids: cur.collect { it.sid }, message: 'ROSTER\n' + rosterText + '\n\nCONVERSATIONS\n' + cur.collect { it.block }.join('\n')]; cur = []; curLen = 0 } }
@@ -48,14 +62,14 @@ convs.each { c ->
   cur << [sid: S(c.source_id), block: block]; curLen += block.length() }
 flush()
 def ctx = convs.collectEntries { c -> [S(c.source_id), [account_id: S(c.account_id), account_name: S(c.account_name), channel_id: S(c.channel_id), channel_name: S(c.channel_name),
-                                                     message_datetime: S(c.message_datetime), message_ts: S(c.message_ts)]] }
+                                                     message_datetime: S(c.message_datetime), message_ts: S(c.message_ts), phase1: checked.contains(S(c.source_id)) ? 'yes' : 'no']] }
 def tk = L('tasks').collect { it.properties ?: [:] }
 def keys = [] as Set
 tk.each { p -> def own = ((p.Owners_List instanceof List ? p.Owners_List : []) + [S(p.ownerMail)]).collect { S(it).toLowerCase() }.findAll { it }
   own.each { keys << (norm(p.account) + '|' + it + '|' + norm(p.task)) } }
 def general = [:]; tk.findAll { S(it.usecasestage) == 'General' && S(it.usecaseId) }.each { general[S(it.account)] = [S(it.usecase), S(it.usecaseId)] }
-return [batches: batches.take(cap), ctx: ctx, keys: keys as List, general: general, roster: roster.collectEntries { [S(it.emp_email).toLowerCase(), S(it.emp_name)] },
-        counts: [conversations_to_read: convs.size(), batches_total: batches.size(), batches_this_run: Math.min(cap, batches.size())]]
+return [batches: batches.take(cap), ctx: ctx, keys: keys as List, general: general, roster: roster.collectEntries { [S(it.emp_email).toLowerCase(), S(it.emp_name)] }, fdse: fdse,
+        counts: [conversations_to_read: unreadAll, this_partition: convs.size(), batches_total: batches.size(), batches_this_run: Math.min(cap, batches.size())]]
 """
 
 PARSE = r"""
@@ -69,6 +83,8 @@ def out = null
   if (i >= 0 && j > i) { try { def o = new JsonSlurper().parseText(s.substring(i, j + 1)); if (o instanceof Map) out = o } catch (e) { } } }
 def C = ctx instanceof Map ? ctx : [:]; def R = roster instanceof Map ? roster : [:]; def G = general instanceof Map ? general : [:]
 def K = (keys instanceof List ? keys : []) as Set
+def FD = ((binding.hasVariable('fdse') && fdse instanceof List) ? fdse : []).collect { S(it).toLowerCase() } as Set
+int known = 0
 def ids = (batch_ids instanceof List ? batch_ids : []).collect { S(it) }
 def now = System.currentTimeMillis()
 def rows = [], tasks = []; int dup = 0, bad = 0
@@ -77,6 +93,7 @@ def per = [:].withDefault { 0 }
 ((out?.items instanceof List) ? out.items : []).each { it ->
   def sid = S(it.conversation_id); def email = S(it.person_email).toLowerCase()
   if (!C[sid] || !R[email] || !S(it.task)) { bad++; return }
+  if (C[sid].phase1 == 'yes' && FD.contains(email)) { known++; return }   // FDSE work in this conversation was recorded on the first read
   def c = C[sid]; def n = ++per[sid + '|' + email]
   def local = email.split('@')[0].replaceAll(/[^a-z0-9]/, '')
   def tid = 'slka_' + sid.replaceAll(/[^A-Za-z0-9]/, '_') + '_' + local + (n > 1 ? '_' + n : '')
@@ -94,8 +111,9 @@ def per = [:].withDefault { 0 }
               owner: R[email], Owners_List: [email], ownerMail: email, eta: due, created_from: 'Slack assignment', source_record_id: sid, slack_link: link,
               comment: ('Assigned in Slack (#' + S(c.channel_name) + ', ' + S(c.message_datetime).take(10) + '): ' + S(it.evidence)).take(500)]] } }
 def done = out ? (out.checked_ids instanceof List ? out.checked_ids : []).collect { S(it) }.unique().findAll { ids.contains(it) } : []   // only what the agent confirms it read; the rest is retried
-done.each { sid -> rows << [id: 'chk|' + sid, payload: [row_kind: 'checked', source_id: sid, account_name: S(C[sid]?.account_name), message_datetime: S(C[sid]?.message_datetime), created_at: now]] }
-return [rows: rows, tasks: tasks, counts: [parsed: out != null, items: rows.count { it.payload.row_kind == 'item' }, new_tasks: tasks.size(), duplicates: dup, dropped: bad, checked: done.size()]]
+done.each { sid -> rows << [id: 'chk2|' + sid, payload: [row_kind: 'checked2', source_id: sid, account_name: S(C[sid]?.account_name), message_datetime: S(C[sid]?.message_datetime), created_at: now]]
+  if (C[sid]?.phase1 != 'yes') rows << [id: 'chk|' + sid, payload: [row_kind: 'checked', source_id: sid, account_name: S(C[sid]?.account_name), message_datetime: S(C[sid]?.message_datetime), created_at: now]] }
+return [rows: rows, tasks: tasks, counts: [parsed: out != null, items: rows.count { it.payload.row_kind == 'item' }, new_tasks: tasks.size(), duplicates: dup, dropped: bad, already_recorded: known, checked: done.size()]]
 """
 
 def lp(nid, title, src, idx, group=W.G):
@@ -105,18 +123,18 @@ def extract_wf():
     it = lambda k: "{{ n_lb.outputs.item.%s }}" % k
     LB = f"n_lb@{W.G}@l"; LW = f"n_lw@{LB}@l"; LT = f"n_lt@{LB}@l"
     ROWS = {"type": "array", "items": W.ROW}
-    nodes = [W.start({"max_batches": {"type": "string"}, "days": {"type": "string"}}, []),
+    nodes = [W.start({"max_batches": {"type": "string"}, "days": {"type": "string"}, "part": {"type": "string"}, "parts": {"type": "string"}}, []),
              SE.fetch("n_conv", "Slack conversations", "db_slack_conversations", 2), SE.fetch("n_asg", "Assignments read so far", "db_slack_assignments", 3),
              SE.fetch("n_um", "People", "db_user_management", 4), SE.fetch("n_tk", "Task tracker", "db_task_tracker", 5),
              W.groovy("n_plan", "Conversations to read, in batches", PLAN, {"conv": W.arr("n_conv.outputs.objects"), "asg": W.arr("n_asg.outputs.objects"), "um": W.arr("n_um.outputs.objects"),
-                      "tasks": W.arr("n_tk.outputs.objects"), "max_batches": "{{ n_in.outputs.max_batches }}", "days": "{{ n_in.outputs.days }}"},
+                      "tasks": W.arr("n_tk.outputs.objects"), "max_batches": "{{ n_in.outputs.max_batches }}", "days": "{{ n_in.outputs.days }}", "part": "{{ n_in.outputs.part }}", "parts": "{{ n_in.outputs.parts }}"},
                       {"conv": "array", "asg": "array", "um": "array", "tasks": "array"},
-                      {"batches": ROWS, "ctx": {"type": "object"}, "keys": {"type": "array", "items": {"type": "string"}}, "general": {"type": "object"}, "roster": {"type": "object"}, "counts": {"type": "object"}}, 6),
+                      {"batches": ROWS, "ctx": {"type": "object"}, "keys": {"type": "array", "items": {"type": "string"}}, "general": {"type": "object"}, "roster": {"type": "object"}, "fdse": {"type": "array", "items": {"type": "string"}}, "counts": {"type": "object"}}, 6),
              lp("n_lb", "For each batch", "{{ n_plan.outputs.result.batches }}", 7),
              W.invoke_agent("n_ag", "Slack Task Assignment agent", AGENT, it("message"), 8, group=LB, fallback="CONTINUE"),
              W.groovy("n_pa", "Check the agent's answer, plan writes", PARSE, {"responses": W.arr("n_ag.outputs.agentResponses"), "ctx": "{{ n_plan.outputs.result.ctx }}",
-                      "roster": "{{ n_plan.outputs.result.roster }}", "general": "{{ n_plan.outputs.result.general }}", "keys": "{{ n_plan.outputs.result.keys }}", "batch_ids": it("ids")},
-                      {"responses": "array", "ctx": "object", "roster": "object", "general": "object", "keys": "array", "batch_ids": "array"},
+                      "roster": "{{ n_plan.outputs.result.roster }}", "general": "{{ n_plan.outputs.result.general }}", "keys": "{{ n_plan.outputs.result.keys }}", "batch_ids": it("ids"), "fdse": "{{ n_plan.outputs.result.fdse }}"},
+                      {"responses": "array", "ctx": "object", "roster": "object", "general": "object", "keys": "array", "batch_ids": "array", "fdse": "array"},
                       {"rows": ROWS, "tasks": ROWS, "counts": {"type": "object"}}, 9, group=LB),
              lp("n_lw", "For each assignment row", "{{ n_pa.outputs.result.rows }}", 10, LB),
              SE.upsert("n_w", "db_slack_assignments", None, 11, group=LW, id_expr="{{ n_lw.outputs.item.id }}", row_expr="{{ n_lw.outputs.item.payload }}"),
@@ -243,7 +261,12 @@ def A = L('asg').collect { it.properties ?: [:] }
 int read = A.count { a -> def t = null; try { t = Instant.parse(S(a.message_datetime)) } catch (e) { }; a.row_kind == 'checked' && t != null && !t.isBefore(since) }
 def prog = A.find { it.row_kind == 'progress' }
 def E = L('eng').collectEntries { [S(it.id).toLowerCase(), it.properties ?: [:]] }
-def people = L('um').collect { it.properties ?: [:] }.findAll { S(it.role).toLowerCase().contains('forward deployed') && S(it.emp_email).contains('@') }.collectEntries { [S(it.emp_email).toLowerCase(), it] }
+def UMP = L('um').collect { it.properties ?: [:] }.findAll { S(it.emp_email).contains('@') }
+def umMgr = UMP.collectEntries { [S(it.emp_email).toLowerCase(), S(it.manager_email).toLowerCase()] }
+def umKids = umMgr.groupBy { k, v -> v }.collectEntries { k, v -> [k, v.keySet() as List] }
+def tree = ['sumeet@unifyapps.com'] as Set; def stk = ['sumeet@unifyapps.com']
+while (stk) { def x = stk.pop(); (umKids[x] ?: []).each { c -> if (tree.add(c)) stk << c } }
+def people = UMP.findAll { tree.contains(S(it.emp_email).toLowerCase()) }.collectEntries { [S(it.emp_email).toLowerCase(), it] }   // everyone in Sumeet Nandal's tree, all roles
 def writes = []; def cnt = [:].withDefault { 0 }; int total = 0
 people.each { email, u ->
   def all = items[email]

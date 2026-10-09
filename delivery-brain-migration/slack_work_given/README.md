@@ -51,3 +51,14 @@ published (version 135). UAT's list is unchanged (Sumeet and Alpha).
 Past 7 days, 9 Oct 14:20 IST: a fifth button, `Slack engagement | Past 30 days | Past 7 days | This week | Next 30 days`.
 `fdse_score.py` now takes any `window_days=pastN` (past7, past30): tasks assigned in the last N days against N/7 of weekly capacity.
 Prod (Shivam's and Sandeep's teams): 421 of 569 people were assigned no tasks in the past 7 days. App published (version 136).
+
+Everyone + Slack coverage, 9 Oct 14:30 IST (prod):
+- Slack engagement covers everyone in Sumeet Nandal's tree (all roles), not just FDSEs. The extract's roster is that tree (593 people);
+  conversations already read for FDSEs get a second pass (`checked2` rows) that keeps only work for everyone else, new ones are read once.
+  The score writes a row per person in the tree. The engagement view has a scatter (across: work given in 30 days, up: weeks with work).
+- Re-read running as 4 partitions (`part`/`parts` inputs on the extract): the hourly job takes part 3 of 4 (its original definition is in
+  `prod/hourly_before_reread.json`) and three temporary jobs `TMP | Slack re-read part 0/1/2 of 4` (every 5 min) take the rest. When it
+  finishes: delete the temporary jobs and put the hourly back to no partition.
+- Slack coverage card at the top of every view: `DB | Slack coverage | Daily` (`slack_coverage.py`, 07:35 IST) writes `__coverage__` in
+  db_fdse_slack_engagement: accounts with no channel (matched by id or name, since account_db has duplicate rows) and mapped channels with
+  no messages in the past 30 days. Prod: 53 of 120 accounts, 98 of 197 channels. App published (version 137).
