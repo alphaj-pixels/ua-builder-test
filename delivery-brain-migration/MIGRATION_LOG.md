@@ -272,7 +272,9 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
 - Deleted (decision 9 Oct, to match UAT): the 271 prod-only tasks with no account and no usecaseId, all from the 7-8 Sep import
   (170 Done, 101 open). Done through a temporary workflow (delete by id; tested on 2 first, then removed). Prod now has 8,401
   tasks, none without an account. Rows before: prod_backups/slices/prod_db_task_tracker_no_account_deleted.json.gz.
-- Still hidden: 2 ATI Motors use cases (ATI Motors is not in account_db).
+- ATI Motors (decision 9 Oct): its 2 use cases ("Service Engineer Management Portal", "Inventory Management Portal"), which had no
+  account id and an account name not in account_db, were archived in UAT and prod (is_archived = true; nothing else changed).
+  Before: prod_backups/slices/prod_db_account_usecase_ati_before_archive.json.gz and the uat_backups copy.
 
 ## Not moved (by the plan or on purpose)
 
