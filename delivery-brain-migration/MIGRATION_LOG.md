@@ -195,11 +195,36 @@ published on 1 Oct 09:14Z by 24369 (an import: ~80 workflows saved at that minut
 DB | sync acc to HS, DB | update Account Region and get-meetings are paused; Delivery Brain | Usecase Timeline is deployed;
 no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import fresh (newest 15:30Z); sentiment scoring fresh.
 
+## Out-of-scope "merges" re-checked (9 Oct ~18:00Z)
+
+- The 8 workflows were not real merges: in each, UAT = prod plus the RBAC step (n_rbacc + n_rbids and IN filters); prod had
+  nothing UAT lacks. Extras: db | get pmpl (copy) also returns sub_stage / sub_stage_locked / sub_stage_source (fields exist in
+  prod's db_account_usecase); DB | Fetch Account Directory nests prod's PL-or-Product-Lead filter under an AND with RBAC (same
+  result); db | patches and regions turns off a total count nothing reads.
+- Why it mattered: CXO_dashboard, All_use_case, cohort-dashboard and account-directory already send rbac_scope / rbac_names,
+  but prod's versions ignored them, so non-admins saw every account in those cards.
+- Promoted all 8 with the admin gate (decision 9 Oct). Before saving, each was test-run on prod three ways: prod as is, the new
+  version with no scope (admin), and the new version scoped to AMN Healthcare, Kudu and Mobily. Admin output was identical to
+  prod for all 8 (db | get pmpl (copy) also with Module 2's real table/list inputs: 843 use cases both); scoped output held only
+  those accounts (e.g. fetch use cases 843 -> 35, account directory 10 -> 3). Callers that send no scope (gtm_metric_calc ->
+  cohort-3, Module 2 and its two prod-only clones -> get pmpl (copy)) are unchanged.
+  Prod versions: Fetch Account Directory 80 -> 81, get pmpl (copy) 89 -> 90, patches and regions 19 -> 20, cohort-0 30 -> 31,
+  Cohort 2 6 -> 7, cohort-3 15 -> 16, Accounts region wise 27 -> 28, fetch use cases 25 -> 26, all deployed. Prod copies before
+  the change: prod_backups/slices/prod_wf_<id>_v<old>.json.gz.
+- Pages, still prod's:
+  - Desktop / Mobile Navigation: the only UAT difference worth taking is the CXO item hidden from non-admins (asked for on 3 Oct;
+    the CXO page itself already checks for admin in prod). Prod's FDSE item (5 people, prod's page) must stay.
+  - Module 2: changed on both sides. UAT adds the Sub-stage column with lock/override, a Go Live Date column filter, stage
+    wording and tooltip, and RBAC on its data sources. Prod adds the Vertical dropdown in the create form, the listUseCases count
+    and a Go Live filter with no default range.
+  - account-directory: data sources already match UAT. UAT adds an "Approval Required" tab over account_db_2 (0 rows in prod: it
+    is filled only by DB | sync acc to HS, paused in prod; its approve button also writes account_db.approved, a field neither
+    environment has) and a links column (Task Management / VOC). Prod adds inline editing (region dropdown and others).
+
 ## Not moved (by the plan or on purpose)
 
-- Changed on both sides (plan: only Task Management merges in scope): Module 2, account-directory, Desktop / Mobile Navigation
-  pages; workflows DB | Fetch Account Directory, db | get pmpl (copy), db | patches and regions, DB | cohort-0, DB | Cohort 2,
-  DB | cohort-3, DB | Accounts region wise, DB | fetch use cases. DB | Portfolio Dashboard stays prod's (plan).
+- Pages changed on both sides: Module 2, account-directory, Desktop / Mobile Navigation (see above). DB | Portfolio Dashboard
+  stays prod's (plan).
 - DB | Add Account Id to transcripts (UAT-ahead but uses UAT's connection and feeds sentiment scoring): left as prod's.
 - Account Health Dashboard page (blocks identical), VOC meetings_analyzed data source (edited in prod after the promotion).
 
