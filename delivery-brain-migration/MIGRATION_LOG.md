@@ -297,7 +297,9 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
 4. RAG edit: update-ahd-rag-status (v10 -> v11) no longer writes account_db unconditionally (its first step is removed); the
    existing current-week branch still does. After the save, the page now reloads the table (dbPortfolioDashboard) and the cards
    (accounts). Page v7248 -> v7249, only the table block changed.
-- UAT still has the old workflows and page (identical to prod's before these fixes).
+- Same fixes 1, 3 and 4 applied in UAT (decision 9 Oct): Replicate Past Week v18 -> v19, update-ahd-rag-status v4 -> v5 (both
+  deployed, equal to prod), page draft v6386 -> v6387 (table block equal to prod; UAT app not published, as other UAT drafts are
+  pending). UAT data untouched. UAT copies before: uat_backups/.
 - Prod copies before: prod_wf_6a61bce1385ecf7fb1742b6e_v17, prod_wf_6a992dc4a68c650ee244474d_v10,
   prod_page_e_6a4b4ab7a57cfe022ab0b960_v7248.
 
