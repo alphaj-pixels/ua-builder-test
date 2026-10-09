@@ -45,7 +45,8 @@ def people = scope.collect { e -> def r = E[e]; def bk = BK[S(r.band)] ?: 'none'
    w1t: N(r.assigned_w1) > 0 ? 'on' : 'off', w2t: N(r.assigned_w2) > 0 ? 'on' : 'off', w3t: N(r.assigned_w3) > 0 ? 'on' : 'off', w4t: N(r.assigned_w4) > 0 ? 'on' : 'off',
    given: N(r.assigned_30d).toString(), open: N(r.open_n).toString(), done: N(r.done_n).toString(), accounts: S(r.accounts) ?: '–', recent: S(r.recent_work) ?: '–',
    last: ago((r.last_assigned_at ?: 0) as long), has_team: kids[e] ? 'yes' : 'no', note: ''] }
-def ORD = { a, b -> a.band_key == 'zero' ? ((a.leader <=> b.leader) ?: (a.name <=> b.name)) : ((N(b.given) <=> N(a.given)) ?: (a.name <=> b.name)) }
+def BO = [zero: 0, low: 1, engaged: 2, none: 3]
+def ORD = { a, b -> ((BO[a.band_key] ?: 9) <=> (BO[b.band_key] ?: 9)) ?: (a.band_key == 'zero' ? ((S(a.leader) <=> S(b.leader)) ?: (S(a.name) <=> S(b.name))) : ((N(b.given) <=> N(a.given)) ?: (S(a.name) <=> S(b.name)))) }   // band first, so the order is consistent
 people = people.sort(false, ORD)
 def cnt = people.countBy { it.band_key }
 def n = people.size()
