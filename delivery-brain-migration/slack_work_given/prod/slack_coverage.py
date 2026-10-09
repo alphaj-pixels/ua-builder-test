@@ -23,10 +23,12 @@ L('ch').each { r -> def p = r.properties ?: [:]; def cid = S(p.channel_id)
 def msgs = [:].withDefault { 0 }; def last = [:]
 L('conv').each { r -> def p = r.properties ?: [:]; def t = null; try { t = Instant.parse(S(p.message_datetime)) } catch (e) { }
   if (t != null && t.isAfter(since)) { def c = S(p.channel_id); msgs[c] = msgs[c] + 1; if (S(p.message_datetime) > S(last[c])) last[c] = S(p.message_datetime) } }
-// churned accounts are left out: status 'churned' or churn_flag set on any row with that name (account_db holds some accounts twice)
+// churned accounts are left out: status 'churned' or churn_flag set (account_db holds some accounts twice)
 def isChurn = { Map p -> S(p.status).toLowerCase() == 'churned' || S(p.churn_flag).toLowerCase() in ['true', 'yes', '1'] }
-def churned = acc.findAll { isChurn(it.p) }.collect { S(it.p.account_name).toLowerCase() } as Set
-def live = acc.findAll { !churned.contains(S(it.p.account_name).toLowerCase()) }.unique { S(it.p.account_name).toLowerCase() }
+// an account is churned only when every row with its name is churned (Bayer, CLP and Dubai Airports have one churned copy and one live one)
+def live = acc.findAll { !isChurn(it.p) }.unique { S(it.p.account_name).toLowerCase() }
+def liveNames = live.collect { S(it.p.account_name).toLowerCase() } as Set
+def churned = acc.findAll { isChurn(it.p) }.collect { S(it.p.account_name).toLowerCase() }.findAll { !liveNames.contains(it) } as Set
 // channels of churned accounts are left out too; channels with no account stay
 def chList = chans.findAll { k, v -> !churned.contains(S(v.account).toLowerCase()) }.collect { k, v -> [channel: v.channel, account: S(v.account), msgs: msgs.containsKey(k) ? msgs[k] : 0, last: S(last[k])] }
   .sort { a, b -> ((a.msgs > 0 ? 1 : 0) <=> (b.msgs > 0 ? 1 : 0)) ?: (a.account.toLowerCase() <=> b.account.toLowerCase()) ?: (a.channel <=> b.channel) }

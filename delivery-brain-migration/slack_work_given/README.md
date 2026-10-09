@@ -73,3 +73,5 @@ Drawers and 7 days, 9 Oct 15:30 IST (prod, app version 138):
   none zero); the score writes assigned_7d, days_7d, daily_7d, open_7d, done_7d, recent_7d, band_7d; the page data returns `eng` and `eng7`.
 - Drawers rebuilt in the format of the working drawers on the account-detail page (fixed type, full height, backdrop, one body slot
   `wrappedInLayout`, open/close actions without `method`), opened by "View all 97 accounts" / "View all 188 channels" buttons.
+- An account counts as churned only when every row with its name is churned (Bayer, CLP and Dubai Airports have one churned and one
+  live copy). Prod: 100 non-churned accounts (99 with churn_flag false, plus Keka with no flag), 36 with no Slack channel.
