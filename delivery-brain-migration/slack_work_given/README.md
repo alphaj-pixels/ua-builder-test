@@ -62,3 +62,5 @@ Everyone + Slack coverage, 9 Oct 14:30 IST (prod):
 - Slack coverage card at the top of every view: `DB | Slack coverage | Daily` (`slack_coverage.py`, 07:35 IST) writes `__coverage__` in
   db_fdse_slack_engagement: accounts with no channel (matched by id or name, since account_db has duplicate rows) and mapped channels with
   no messages in the past 30 days. Prod: 53 of 120 accounts, 98 of 197 channels. App published (version 137).
+- Churned accounts are left out of "accounts with no Slack channel" (status 'churned' or `churn_flag` true on any row with that name;
+  24 names). Prod now: 33 of 97 accounts have no channel (32 active, 1 not started).
