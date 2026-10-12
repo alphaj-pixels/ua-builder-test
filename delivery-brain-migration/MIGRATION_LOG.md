@@ -397,6 +397,12 @@ Every item was asked one by one; answers and statuses are in DECISIONS_2026-10-1
   The team (Governance > Teams > Super Admins) stays the only place to add or remove people; changes show within 15 minutes.
   If the team lookup ever returns nobody, the table is left as it is. Tested: Dana and Alpha yes, others no (prod 5, UAT 4).
 
+- RBAC identity = username first (12 Oct, on request; prod app v157, UAT drafts). Every expression that read
+  userContext['email'] now uses the username when it contains "@", else the email: the rbacScope and superAdmin data sources,
+  FDSE utilisation (fu_view, fu_eng), the three Account 360 / overview edit data sources and logAccountEdit (editor identity),
+  and the super-admin / admin blocks on CXO Dashboard, Attention, FDSE and both navigation pages. A temporary debug line under
+  the "super admins only" notice shows username, email and the check's result (to be removed once super admins see the pages).
+
 Blocked (no access; owners named):
 - DB | Portfolio Dashboard RBAC in prod (Ishan).
 - HubSpot approval sync: 0 rows in account_db_2 after its Monday run; one-off run blocked (ishan.savaliya removed edit access).
