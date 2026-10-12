@@ -390,6 +390,13 @@ Every item was asked one by one; answers and statuses are in DECISIONS_2026-10-1
   the "super admins only" notice stayed hidden for everyone (seen by Alpha and Dana). Now wired, and the expression treats a
   missing value as "no", so the page can never be blank. Same in UAT (drafts).
 
+- Super admin check reads a table (12 Oct). With the pages wired, super admins saw the "super admins only" notice: the check
+  read the app team's members, which is allowed under my login but not under theirs. Now DB | RBAC | Super admins sync (every
+  15 min; prod 6accadfb0c83225fdbc22d00, UAT 6accae4cb4753b6f5da826d6) copies the team's members into db_super_admins (readable
+  by every app user, like db_team_members), and DB | RBAC | Super admin (v3) checks the viewer's email against that table.
+  The team (Governance > Teams > Super Admins) stays the only place to add or remove people; changes show within 15 minutes.
+  If the team lookup ever returns nobody, the table is left as it is. Tested: Dana and Alpha yes, others no (prod 5, UAT 4).
+
 Blocked (no access; owners named):
 - DB | Portfolio Dashboard RBAC in prod (Ishan).
 - HubSpot approval sync: 0 rows in account_db_2 after its Monday run; one-off run blocked (ishan.savaliya removed edit access).
