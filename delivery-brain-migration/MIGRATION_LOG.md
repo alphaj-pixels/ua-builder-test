@@ -404,6 +404,11 @@ Every item was asked one by one; answers and statuses are in DECISIONS_2026-10-1
   and the super-admin / admin blocks on CXO Dashboard, Attention, FDSE and both navigation pages. A temporary debug line under
   the "super admins only" notice shows username, email and the check's result (to be removed once super admins see the pages).
 
+- Super admin menu items hidden from others (12 Oct, prod app v159). A permission group "Super Admin" with one "View"
+  permission (6accb865fd0ee00ee4ad0d7d / O6szm-M7D0TGgtpFI6d5C, created in the builder) is required by both menu items
+  (navigation item "permissions"), and the app role Super Admin holds it (Governance > Roles). Same mechanism already hides
+  "Use case Hub" from non-admins (Admin group). UAT has no such group, so its menu is unchanged.
+
 Blocked (no access; owners named):
 - HubSpot approval sync: 0 rows in account_db_2 after its Monday run; one-off run blocked (ishan.savaliya removed edit access).
 - Google Workspace user sync rename "Weekly" -> "Daily" (harshit's workflow).
