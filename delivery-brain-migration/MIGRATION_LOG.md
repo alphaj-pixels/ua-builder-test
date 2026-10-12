@@ -355,7 +355,8 @@ Every item was asked one by one; answers and statuses are in DECISIONS_2026-10-1
   The earlier platform user groups were deleted.
 - RBAC on readings_db / submission_db (3.1). account_id IN my accounts on worklistTrendChart, trend_chart,
   trend_submission_log, fetchRecordsReadingsDb, fetchRecordsSubmissionDb; trend_on_click only passes an in-scope account.
-  DB | Portfolio Dashboard: done in UAT (v94); prod blocked (owner Ishan; no edit or test access for us).
+  DB | Portfolio Dashboard: UAT v94; prod v105 -> v106 on 12 Oct once edit access was there (tested on a copy: admin 100
+  accounts, one-account user 1, two accounts 2, none 0; before the fix every user got all 100).
 - Index Emails (3.2). Was hard-coded to 5-6 Oct. Now a rolling window (yesterday to today, IST) in prod (v156) and UAT (v109,
   stale Gmail default connection fixed). Prod 6-12 Oct backfilled day by day: 9,244 -> 9,511 emails.
 - UAT parity (1.9, 3.3). Admin gate on the 8 workflows, VOC Slack fetch / write / agent merged (UAT keeps its 12 signal fields),
@@ -404,7 +405,6 @@ Every item was asked one by one; answers and statuses are in DECISIONS_2026-10-1
   the "super admins only" notice shows username, email and the check's result (to be removed once super admins see the pages).
 
 Blocked (no access; owners named):
-- DB | Portfolio Dashboard RBAC in prod (Ishan).
 - HubSpot approval sync: 0 rows in account_db_2 after its Monday run; one-off run blocked (ishan.savaliya removed edit access).
 - Google Workspace user sync rename "Weekly" -> "Daily" (harshit's workflow).
 - Dana: a platform-role call was made before "app level" was clarified; its effect could not be read back reliably. Check her
