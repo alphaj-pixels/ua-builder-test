@@ -384,6 +384,12 @@ Every item was asked one by one; answers and statuses are in DECISIONS_2026-10-1
     identical counts (today no use case's name differs from its account's name, so this changes nothing visible yet; it stops
     a rename from hiding records). Prod app v154. Signal alerts keep names (1.5c).
 
+- Super admin pages blank (fixed 12 Oct, prod app v155). The 6 blocks that read the superAdmin data source (Attention page x2,
+  FDSE utilisation x2, CXO Dashboard card, old FDSE nav link) listed it only as a dependency, not in dataSourceIds as every
+  other block reading a global data source does, so the value never reached them: the check errored and both the content and
+  the "super admins only" notice stayed hidden for everyone (seen by Alpha and Dana). Now wired, and the expression treats a
+  missing value as "no", so the page can never be blank. Same in UAT (drafts).
+
 Blocked (no access; owners named):
 - DB | Portfolio Dashboard RBAC in prod (Ishan).
 - HubSpot approval sync: 0 rows in account_db_2 after its Monday run; one-off run blocked (ishan.savaliya removed edit access).
