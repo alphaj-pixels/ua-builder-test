@@ -337,6 +337,60 @@ no harshit_draft workflows exist in prod; DB | Alerts deployed; Granola import f
   active accounts now have a current Account 360 (~30 s per account).
 - Reference copy of the builder: a360_batches_reference.py (needs the scratch helpers; for reading, not running).
 
+## Known limits and review decisions (10-12 Oct), prod app published v150, v152, v154
+
+Every item was asked one by one; answers and statuses are in DECISIONS_2026-10-10.md. What changed:
+
+- Access (2.1-2.3). Admin = a role named exactly "Admin" (trimmed, any case), in the RBAC workflow, menus and pages. Settings
+  (RAG Config) is admins only (out of the menu; page guard; reached from a Settings button on the CXO Dashboard). ARR and
+  renewal date are editable by admins only (read-only columns for others, plus a save-path backstop).
+- Edit log (2.5). Every Customer Hub inline edit is written to db_account_edit_log (who, when, field, old, new) by
+  DB | Customer Hub | Log edit; admins can read it.
+- Super admins (2.6, 3.5, 3.6). Kept at app level: delivery_brain app role "Super Admin" (a marker, no extra permissions) and app
+  team "Super Admins" in the app's Governance > Teams (prod role 6acc86bcfd0ee00ee4ad0d78 / team 6acc86bc50b76e688c6cf7eb,
+  5 members incl. Dana; UAT role 6acc86cc24c6206bfab9e102 / team 6acc86cc24c6206bfab9e103, 4 members). DB | RBAC | Super admin
+  reads the team; the global data source superAdmin feeds the Attention card/page and the FDSE page. No names in code. Menu
+  items "Accounts needing attention" and "FDSE Utilisation" added (prod v152); others who open them see "This page is
+  available to super admins only.". To add a super admin: delivery_brain > Governance > Teams > Super Admins > add member.
+  The earlier platform user groups were deleted.
+- RBAC on readings_db / submission_db (3.1). account_id IN my accounts on worklistTrendChart, trend_chart,
+  trend_submission_log, fetchRecordsReadingsDb, fetchRecordsSubmissionDb; trend_on_click only passes an in-scope account.
+  DB | Portfolio Dashboard: done in UAT (v94); prod blocked (owner Ishan; no edit or test access for us).
+- Index Emails (3.2). Was hard-coded to 5-6 Oct. Now a rolling window (yesterday to today, IST) in prod (v156) and UAT (v109,
+  stale Gmail default connection fixed). Prod 6-12 Oct backfilled day by day: 9,244 -> 9,511 emails.
+- UAT parity (1.9, 3.3). Admin gate on the 8 workflows, VOC Slack fetch / write / agent merged (UAT keeps its 12 signal fields),
+  email scheduler, Index Emails.
+- Atlas (1.6). Prod sync as in UAT: atlas_project_ created, every 6 h, first run 125 projects and 2,742 issues.
+- Schedules (2.11, 2.15). Weekly Account 360 run done 10 Oct. FDSE people sync moved to 09:30 IST.
+- Failure alerts (2.14, replaced the 7-day health check). Prod workflow DB | Alerts | Failed runs to Slack
+  (6acc87ff0c83225fdbbeceba) on the platform event "automation run failed": when one of the 47 automations built in this work
+  fails (test runs ignored), it posts the name, step, error, time (IST) and run id to #db-knowledge-alert through the
+  deliverybrainslack-1 connection. No other notifications. The alert workflow does not watch itself. One setup test message was
+  posted. The id list is inside its code step (add new automations there).
+- Account id instead of name (1.5a-c).
+  - db_task_tracker gained account_id (string, filterable) in UAT and prod. Backfill: the task's use case (usecaseId ->
+    db_account_usecase.usecaseId -> account_id) first, else the one account with the task's account name. Prod 8,665 / 8,665;
+    UAT 8,440 / 8,586 (146 tasks carry a name shared by two accounts and no use case). Writes sent the whole record with its
+    version, so a concurrent edit is rejected rather than overwritten (a probe showed /api/entity/update replaces all
+    properties; the one probed UAT task was restored at once).
+  - Nightly DB | Tasks | Fill account id, 01:40 IST (prod 6acc9120b91c8a4861bcb115, UAT 6acc8e432ffc796a60f13199): same rule,
+    sets only account_id on rows that differ (update by query). Tested: reads all tasks; a cleared UAT task was filled back
+    with every other field unchanged.
+  - Writers now set account_id: DB | Task Management | Create Task (5 create steps, from the use case fetched), DB | Task
+    Management Application | Create Task (resolve step returns it), DB | Slack tasks | Sync to task tracker, DB | Slack
+    assignments | Extract. Tested in UAT with real creates (test tasks deleted). Bulk Task Add Sheet untouched.
+  - Filters: 12 data sources and 10 workflows (11 fetch steps) on db_account_usecase / db_task_tracker now match
+    "account_id IN my ids OR account IN my names" (admins still open). Old vs new on prod and UAT, admin and a scoped user:
+    identical counts (today no use case's name differs from its account's name, so this changes nothing visible yet; it stops
+    a rename from hiding records). Prod app v154. Signal alerts keep names (1.5c).
+
+Blocked (no access; owners named):
+- DB | Portfolio Dashboard RBAC in prod (Ishan).
+- HubSpot approval sync: 0 rows in account_db_2 after its Monday run; one-off run blocked (ishan.savaliya removed edit access).
+- Google Workspace user sync rename "Weekly" -> "Daily" (harshit's workflow).
+- Dana: a platform-role call was made before "app level" was clarified; its effect could not be read back reliably. Check her
+  platform role in UnifyApps Settings > Users.
+
 ## Not moved (by the plan or on purpose)
 
 - DB | Portfolio Dashboard stays prod's (plan).

@@ -10,7 +10,7 @@ Status: **D** = decided, not yet done · **Done** = applied and verified.
 | 1.2 | Phone menu (4 dead buttons, 2 mock-ups) | Real pages: Health (Portfolio Dashboard), VOC, Accounts (Customer Hub), Tasks (Task Management), Risks (Escalations), CXO (admins only) | Done (prod v150; UAT draft) |
 | 1.3 | Medium screens: custom top bar with its links hidden, dead CXO link | Use the standard menu (same as wide screens) | Done (prod v150; UAT draft) |
 | 1.4 | Mock-ups: Head of Delivery, PM Control Tower | Leave them out of menus; pages untouched | Done (out of every menu) |
-| 1.5 | 17 data sources filter by account name | Switch to account id (plan to be shown and asked first) | D |
+| 1.5 | 17 data sources filter by account name | Switch to account id (plan to be shown and asked first) | Done 12 Oct (see 1.5a-c) |
 | 1.6 | Atlas sync (Issues tab empty) | Copy the same setup as UAT to prod and make it work | Done (prod: atlas_project_ created, first run 10 Oct 00:19Z: 125 projects, 1000+ issues; every 6 h) |
 | 1.7 | DB \| Connection Confirmation via Slack Notification | Leave it (not a test edit: 26306's on-demand DM to 12 people) | Done (no change) |
 | 1.8 | VOC "No sentiment" pill % shows Red % | Fix the label, prod and UAT | Done (prod v150; UAT draft) |
@@ -20,7 +20,7 @@ Status: **D** = decided, not yet done · **Done** = applied and verified.
 
 | # | Item | Decision | Status |
 |---|------|----------|--------|
-| — | Name filters, dead links, mock-ups, Atlas sync, prod-only admin bypass | Covered by round 1 (1.2-1.6, 1.9) | D |
+| — | Name filters, dead links, mock-ups, Atlas sync, prod-only admin bypass | Covered by round 1 (1.2-1.6, 1.9) | Done (via 1.2-1.6, 1.9) |
 | 2.1 | Admin decided by role name containing "admin"/"owner" | Admin only when a role name is exactly "Admin" (trimmed, any case); "Owner" and "... Owner" roles are not admins. Same rule in the RBAC workflow, menus and pages, UAT and prod | Done (prod v150; UAT draft). Prod: 41 admins; Sarthak (Owner only) loses admin |
 | 2.2 | Settings (RAG Config) open to everyone | Admins only: hidden from the menu for non-admins and blocked by page permission, UAT and prod | Done (page guard + Settings button on CXO Dashboard; out of the menu) |
 | 2.3 | ARR and renewal dates editable inline by anyone who sees the account | Admins only: read-only for non-admins, admins keep inline editing, UAT and prod | Done (columns admin-only + save backstop) |
@@ -37,9 +37,9 @@ Status: **D** = decided, not yet done · **Done** = applied and verified.
 | 2.14 | No bake time for the 9 Oct fixes | Replaced 12 Oct: no scheduled checks. Failure alerts on runs of every automation, app and agent I built, prod only, posted to Slack #db-knowledge-alert via connection deliverybrainslack-1; Slack channel message only, no notifications to super admins or anyone else | Done 12 Oct: prod workflow 'DB \| Alerts \| Failed runs to Slack' (6acc87ff0c83225fdbbeceba, v3 deployed) on the platform event 'automation run failed'; watches the 46 automations I built (test runs ignored); one setup test message posted; health-check script retired |
 | 2.15 | FDSE people sync (05:30) runs before the Google Workspace user sync (09:00) | Move FDSE people sync to 09:30 IST; rename the Workspace sync from "Weekly" to "Daily" | Partly: FDSE sync at 09:30 done; rename blocked (harshit's workflow, no edit access) |
 | 2.16 | Slack coverage depends on a manual channel-linking form | Leave it as is | D (no action) |
-| 1.5a | Account-id switch: filter strictness | ID or name: a record shows if its account id OR its account name is in the user's scope | D |
-| 1.5b | Tasks have no account-id field | Add account_id to db_task_tracker, backfill all rows from the account name, set it in the task-creating workflows that can be changed, plus a nightly filler for tasks created without it (Bulk Task Add Sheet stays untouched); UAT and prod | D |
-| 1.5c | Signal alerts list accounts by AI-written name | Keep names; only use cases and tasks move to ID-or-name | D |
+| 1.5a | Account-id switch: filter strictness | ID or name: a record shows if its account id OR its account name is in the user's scope | Done 12 Oct: 12 data sources + 10 workflows (11 fetch steps) in UAT and prod; tested old vs new, admin and scoped (identical counts, as no use case's name differs from its account's today); prod app v154 |
+| 1.5b | Tasks have no account-id field | Add account_id to db_task_tracker, backfill all rows from the account name, set it in the task-creating workflows that can be changed, plus a nightly filler for tasks created without it (Bulk Task Add Sheet stays untouched); UAT and prod | Done 12 Oct: prod 8,665 / 8,665 tasks, UAT 8,440 / 8,586 (146 have a name shared by two accounts and no use case); id from the task's use case first, else the one account with that name; 4 writers set it; nightly 'DB \| Tasks \| Fill account id' 01:40 IST |
+| 1.5c | Signal alerts list accounts by AI-written name | Keep names; only use cases and tasks move to ID-or-name | Done (no change) |
 | 3.1 | readings_db and submission_db reads not account-filtered everywhere | Add the RBAC account filter (ID or name, admins open) wherever pages or workflows read readings_db and submission_db; no schema change to either object | Done in UAT; prod data sources done (v150); prod DB | Portfolio Dashboard blocked (owner Ishan, no edit access) |
 | 3.2 | DB \| Index Emails hard-coded to 5-6 Oct (no client emails since 5 Oct 21:02 UTC); UAT stuck on 15-16 Sep | Fix + backfill: rolling window (yesterday to today, IST) in prod and UAT, then backfill 6-10 Oct in prod day by day | Done 12 Oct: prod rolling (v156), 6-12 Oct backfilled (9,244 -> 9,511 emails); UAT rolling (v109, stale Gmail default fixed) |
 | 3.3 | UAT VOC Slack agent: prod's prompt drops UAT's 12 signal fields that Classify CXO Signals reads | Merge: UAT gets prod's ledger rules, duplicate guard and pagination, and keeps its signal fields in the prompt and the write workflow | Done 12 Oct (agent v20, write workflow v11, fetch v3) |
