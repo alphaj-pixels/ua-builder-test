@@ -14,7 +14,7 @@ Status: **D** = decided, not yet done · **Done** = applied and verified.
 | 1.6 | Atlas sync (Issues tab empty) | Copy the same setup as UAT to prod and make it work | Done (prod: atlas_project_ created, first run 10 Oct 00:19Z: 125 projects, 1000+ issues; every 6 h) |
 | 1.7 | DB \| Connection Confirmation via Slack Notification | Leave it (not a test edit: 26306's on-demand DM to 12 people) | Done (no change) |
 | 1.8 | VOC "No sentiment" pill % shows Red % | Fix the label, prod and UAT | Done (prod v150; UAT draft) |
-| 1.9 | UAT behind prod | Everything: admin gate on 8 workflows, VOC Slack agent + its 2 pipeline workflows, Email ingestion scheduler + Index Emails | In progress (admin gate x8 done; Slack pipeline and email workflows next) |
+| 1.9 | UAT behind prod | Everything: admin gate on 8 workflows, VOC Slack agent + its 2 pipeline workflows, Email ingestion scheduler + Index Emails | Done 12 Oct (gate x8 = prod; Slack fetch = prod; write merged; email scheduler prod logic + UAT connections; Index Emails rolling; agent merged) |
 
 ## Round 2 — review list (10 Oct)
 
@@ -41,7 +41,9 @@ Status: **D** = decided, not yet done · **Done** = applied and verified.
 | 1.5b | Tasks have no account-id field | Add account_id to db_task_tracker, backfill all rows from the account name, set it in the task-creating workflows that can be changed, plus a nightly filler for tasks created without it (Bulk Task Add Sheet stays untouched); UAT and prod | D |
 | 1.5c | Signal alerts list accounts by AI-written name | Keep names; only use cases and tasks move to ID-or-name | D |
 | 3.1 | readings_db and submission_db reads not account-filtered everywhere | Add the RBAC account filter (ID or name, admins open) wherever pages or workflows read readings_db and submission_db; no schema change to either object | Done in UAT; prod data sources done (v150); prod DB | Portfolio Dashboard blocked (owner Ishan, no edit access) |
-| 3.2 | DB \| Index Emails hard-coded to 5-6 Oct (no client emails since 5 Oct 21:02 UTC); UAT stuck on 15-16 Sep | Fix + backfill: rolling window (yesterday to today, IST) in prod and UAT, then backfill 6-10 Oct in prod day by day | D |
+| 3.2 | DB \| Index Emails hard-coded to 5-6 Oct (no client emails since 5 Oct 21:02 UTC); UAT stuck on 15-16 Sep | Fix + backfill: rolling window (yesterday to today, IST) in prod and UAT, then backfill 6-10 Oct in prod day by day | Done 12 Oct: prod rolling (v156), 6-12 Oct backfilled (9,244 -> 9,511 emails); UAT rolling (v109, stale Gmail default fixed) |
+| 3.3 | UAT VOC Slack agent: prod's prompt drops UAT's 12 signal fields that Classify CXO Signals reads | Merge: UAT gets prod's ledger rules, duplicate guard and pagination, and keeps its signal fields in the prompt and the write workflow | Done 12 Oct (agent v20, write workflow v11, fetch v3) |
+| 3.4 | Dana: super admin | Application level: already in 'Delivery Brain Super Admins' (prod and UAT, verified). A platform-role call was also made before this was clarified; its effect could not be read back reliably (see handover open items) | Done (app level) |
 
 ## Run order (one by one, each verified before the next)
 
